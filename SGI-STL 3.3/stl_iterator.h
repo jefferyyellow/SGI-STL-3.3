@@ -33,7 +33,7 @@
 
 __STL_BEGIN_NAMESPACE
 
-
+// 可以在迭代器背后插入元素的迭代器
 template <class _Container>
 class back_insert_iterator {
 protected:
@@ -47,18 +47,20 @@ public:
   typedef void                reference;
 
   explicit back_insert_iterator(_Container& __x) : container(&__x) {}
+  // 赋值就是在后面插入值
   back_insert_iterator<_Container>&
   operator=(const typename _Container::value_type& __value) { 
     container->push_back(__value);
     return *this;
   }
+  // 注意这种迭代器不能遍历
   back_insert_iterator<_Container>& operator*() { return *this; }
   back_insert_iterator<_Container>& operator++() { return *this; }
   back_insert_iterator<_Container>& operator++(int) { return *this; }
 };
 
 #ifndef __STL_CLASS_PARTIAL_SPECIALIZATION
-
+// 这是一种output_iterator_tag的迭代器
 template <class _Container>
 inline output_iterator_tag
 iterator_category(const back_insert_iterator<_Container>&)
@@ -72,7 +74,7 @@ template <class _Container>
 inline back_insert_iterator<_Container> back_inserter(_Container& __x) {
   return back_insert_iterator<_Container>(__x);
 }
-
+// 可以在迭代器前面插入元素的迭代器
 template <class _Container>
 class front_insert_iterator {
 protected:
@@ -86,11 +88,13 @@ public:
   typedef void                reference;
 
   explicit front_insert_iterator(_Container& __x) : container(&__x) {}
+  // 赋值就是在前面插入节点
   front_insert_iterator<_Container>&
   operator=(const typename _Container::value_type& __value) { 
     container->push_front(__value);
     return *this;
   }
+  // 注意这种迭代器不能遍历
   front_insert_iterator<_Container>& operator*() { return *this; }
   front_insert_iterator<_Container>& operator++() { return *this; }
   front_insert_iterator<_Container>& operator++(int) { return *this; }
@@ -112,6 +116,7 @@ inline front_insert_iterator<_Container> front_inserter(_Container& __x) {
   return front_insert_iterator<_Container>(__x);
 }
 
+// 可以在迭代器处插入元素的迭代器
 template <class _Container>
 class insert_iterator {
 protected:
@@ -127,12 +132,14 @@ public:
 
   insert_iterator(_Container& __x, typename _Container::iterator __i) 
     : container(&__x), iter(__i) {}
+  // 迭代器处插入元素
   insert_iterator<_Container>&
   operator=(const typename _Container::value_type& __value) { 
     iter = container->insert(iter, __value);
     ++iter;
     return *this;
   }
+  // 注意这种迭代器不能遍历
   insert_iterator<_Container>& operator*() { return *this; }
   insert_iterator<_Container>& operator++() { return *this; }
   insert_iterator<_Container>& operator++(int) { return *this; }
@@ -157,6 +164,7 @@ insert_iterator<_Container> inserter(_Container& __x, _Iterator __i)
   return insert_iterator<_Container>(__x, __iter(__i));
 }
 
+// 反方向的双向迭代器
 #ifndef __STL_LIMITED_DEFAULT_TEMPLATES
 template <class _BidirectionalIterator, class _Tp, class _Reference = _Tp&, 
           class _Distance = ptrdiff_t> 
@@ -187,19 +195,23 @@ public:
 #ifndef __SGI_STL_NO_ARROW_OPERATOR
   pointer operator->() const { return &(operator*()); }
 #endif /* __SGI_STL_NO_ARROW_OPERATOR */
+  // 自增（前面），取前面一个元素
   _Self& operator++() {
     --current;
     return *this;
   }
+  // 自增（后面），取前面一个元素
   _Self operator++(int) {
     _Self __tmp = *this;
     --current;
     return __tmp;
   }
+   // 自减（前面），取后面一个元素
   _Self& operator--() {
     ++current;
     return *this;
   }
+  // 自减（后面），取后面一个元素
   _Self operator--(int) {
     _Self __tmp = *this;
     ++current;

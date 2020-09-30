@@ -28,6 +28,7 @@
  *   You should not attempt to use it directly.
  */
 
+// 注意：这个一个内部头文件，被其他的STL头包含，您不应该尝试直接用它
 #ifndef __SGI_STL_INTERNAL_UNINITIALIZED_H
 #define __SGI_STL_INTERNAL_UNINITIALIZED_H
 
@@ -37,6 +38,8 @@ __STL_BEGIN_NAMESPACE
 
 // Valid if copy construction is equivalent to assignment, and if the
 //  destructor is trivial.
+// 如果赋值和拷贝构造等价，并且析构是无用的，注意copy里面有很多特化的处理，
+// 如果是内置类型，直接调用memmove
 template <class _InputIter, class _ForwardIter>
 inline _ForwardIter 
 __uninitialized_copy_aux(_InputIter __first, _InputIter __last,
@@ -46,6 +49,7 @@ __uninitialized_copy_aux(_InputIter __first, _InputIter __last,
   return copy(__first, __last, __result);
 }
 
+// 调用拷贝构造函数而不是赋值，并且如果过程中出现异常，将构造好的析构掉
 template <class _InputIter, class _ForwardIter>
 _ForwardIter 
 __uninitialized_copy_aux(_InputIter __first, _InputIter __last,
@@ -61,7 +65,7 @@ __uninitialized_copy_aux(_InputIter __first, _InputIter __last,
   __STL_UNWIND(_Destroy(__result, __cur));
 }
 
-
+// 根据是否是pod类型，调用不同的拷贝函数
 template <class _InputIter, class _ForwardIter, class _Tp>
 inline _ForwardIter
 __uninitialized_copy(_InputIter __first, _InputIter __last,
@@ -71,6 +75,7 @@ __uninitialized_copy(_InputIter __first, _InputIter __last,
   return __uninitialized_copy_aux(__first, __last, __result, _Is_POD());
 }
 
+// 注意用__VALUE_TYPE剥离出类型
 template <class _InputIter, class _ForwardIter>
 inline _ForwardIter
   uninitialized_copy(_InputIter __first, _InputIter __last,
@@ -80,12 +85,14 @@ inline _ForwardIter
                               __VALUE_TYPE(__result));
 }
 
+// 字符串版本的拷贝
 inline char* uninitialized_copy(const char* __first, const char* __last,
                                 char* __result) {
   memmove(__result, __first, __last - __first);
   return __result + (__last - __first);
 }
 
+// 宽字符串版本的拷贝
 inline wchar_t* 
 uninitialized_copy(const wchar_t* __first, const wchar_t* __last,
                    wchar_t* __result)

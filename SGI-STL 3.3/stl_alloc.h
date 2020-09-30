@@ -38,6 +38,10 @@
 // The allocation primitives are intended to allocate individual objects,
 // not larger arenas as with the original STL allocators.
 
+// 这实现了一些标准的节点分配器，这是和C++标准或者原始的STL分配器不同。
+// 他们没有封装不同的指针类型，事实上我们假定只有一种指针类型。
+// 该分配的原意是分配单个独立的实例，不像原始STL分配器那样用于更大的场所
+
 #ifndef __THROW_BAD_ALLOC
 #  if defined(__STL_NO_BAD_ALLOC) || !defined(__STL_USE_EXCEPTIONS)
 #    include <stdio.h>
@@ -96,6 +100,7 @@ __STL_BEGIN_NAMESPACE
 
 // Malloc-based allocator.  Typically slower than default alloc below.
 // Typically thread-safe and more storage efficient.
+// 基于malloc的分配器，通常比默认的分配器慢，通常是线程安全并且存储效率更高
 #ifdef __STL_STATIC_TEMPLATE_MEMBER_BUG
 # ifdef __DECLARE_GLOBALS_HERE
     void (* __malloc_alloc_oom_handler)() = 0;
@@ -137,7 +142,7 @@ public:
     if (0 == __result) __result = _S_oom_realloc(__p, __new_sz);
     return __result;
   }
-
+  // 设置内存不足处理
   static void (* __set_malloc_handler(void (*__f)()))()
   {
     void (* __old)() = __malloc_alloc_oom_handler;
@@ -148,7 +153,7 @@ public:
 };
 
 // malloc_alloc out-of-memory handling
-
+// malloc_alloc 内存不足处理
 #ifndef __STL_STATIC_TEMPLATE_MEMBER_BUG
 template <int __inst>
 void (* __malloc_alloc_template<__inst>::__malloc_alloc_oom_handler)() = 0;
@@ -162,8 +167,10 @@ __malloc_alloc_template<__inst>::_S_oom_malloc(size_t __n)
     void* __result;
 
     for (;;) {
+		// 内存不足的处理是否存在，如果不存在，直接__THROW_BAD_ALLOC
         __my_malloc_handler = __malloc_alloc_oom_handler;
         if (0 == __my_malloc_handler) { __THROW_BAD_ALLOC; }
+		// 循环调用内存不足的处理，直到分配内存成功
         (*__my_malloc_handler)();
         __result = malloc(__n);
         if (__result) return(__result);
@@ -177,8 +184,10 @@ void* __malloc_alloc_template<__inst>::_S_oom_realloc(void* __p, size_t __n)
     void* __result;
 
     for (;;) {
+		// 内存不足的处理是否存在，如果不存在，直接__THROW_BAD_ALLOC
         __my_malloc_handler = __malloc_alloc_oom_handler;
         if (0 == __my_malloc_handler) { __THROW_BAD_ALLOC; }
+		// 循环调用内存不足的处理，直到分配内存成功
         (*__my_malloc_handler)();
         __result = realloc(__p, __n);
         if (__result) return(__result);
@@ -186,7 +195,7 @@ void* __malloc_alloc_template<__inst>::_S_oom_realloc(void* __p, size_t __n)
 }
 
 typedef __malloc_alloc_template<0> malloc_alloc;
-
+// 为了符合STL规范，做了封装
 template<class _Tp, class _Alloc>
 class simple_alloc {
 
@@ -206,11 +215,14 @@ public:
 // NDEBUG, but it's far better to just use the underlying allocator
 // instead when no checking is desired.
 // There is some evidence that this can confuse Purify.
+// 分配器适配器为了调试检查大小参数，使用断言来报告错误。可以使用NDEBUG来禁用检查，
+// 当不需要检查时最好的方式是只适用基础分配器。
+// 整体的搞法就是在分配大小的基础上+_S_extra个字节，在最开始的_S_extra里面保存分配的大小
 template <class _Alloc>
 class debug_alloc {
 
 private:
-
+	// 保存大小的存储空间大小，注意：这必须足够大来保持对齐
   enum {_S_extra = 8};  // Size of space used to store size.  Note
                         // that this must be large enough to preserve
                         // alignment.
@@ -258,6 +270,9 @@ typedef malloc_alloc single_client_alloc;
 // original STL class-specific allocators, but with less fragmentation.
 // Default_alloc_template parameters are experimental and MAY
 // DISAPPEAR in the future.  Clients should just use alloc for now.
+// 默认的节点分配器
+// 使用合适的编译器，它可以和原始STL类指定的分配器有差不多的速度，但是碎片更少。
+// Default_alloc_template的参数都是实验性并且在未来可能消失，用户现在应该只使用alloc
 //
 // Important implementation properties:
 // 1. If the client request an object of size > _MAX_BYTES, the resulting
@@ -266,8 +281,11 @@ typedef malloc_alloc single_client_alloc;
 //    _S_round_up(requested_size).  Thus the client has enough size
 //    information that we can return the object to the proper free list
 //    without permanently losing part of the object.
-//
-
+// 重要的实现属性：
+// 1.如果用户要求一个实例的大小大于_MAX_BYTES，结果的实例会直接从malloc中获得
+// 2.在其他的情况下，我们分配一个大小等于_S_round_up(requested_size)的对象。
+// 因此用户有足够的大小信息，我们可以把实例返回到合适的空闲列表中去，并且永久丢失部分对象
+// 
 // The first template parameter specifies whether more than one thread
 // may use this allocator.  It is safe to allocate an object from
 // one instance of a default_alloc and deallocate it with another
@@ -292,26 +310,30 @@ private:
   // Really we should use static const int x = N
   // instead of enum { x = N }, but few compilers accept the former.
 #if ! (defined(__SUNPRO_CC) || defined(__GNUC__))
-    enum {_ALIGN = 8};
-    enum {_MAX_BYTES = 128};
-    enum {_NFREELISTS = 16}; // _MAX_BYTES/_ALIGN
+    enum {_ALIGN = 8};			// 小型内存块的对齐大小
+    enum {_MAX_BYTES = 128};	// 小型内存块的最大大小
+    enum {_NFREELISTS = 16}; // _MAX_BYTES/_ALIGN	// 空闲列表的数目
 # endif
+	// 将大小为_ALIGN对齐（8字节）
   static size_t
   _S_round_up(size_t __bytes) 
     { return (((__bytes) + (size_t) _ALIGN-1) & ~((size_t) _ALIGN - 1)); }
 
 __PRIVATE:
+  // 空闲列表的节点
   union _Obj {
         union _Obj* _M_free_list_link;
         char _M_client_data[1];    /* The client sees this.        */
   };
 private:
+	// 空闲列表
 # if defined(__SUNPRO_CC) || defined(__GNUC__) || defined(__HP_aCC)
     static _Obj* __STL_VOLATILE _S_free_list[]; 
         // Specifying a size results in duplicate def for 4.1
 # else
     static _Obj* __STL_VOLATILE _S_free_list[_NFREELISTS]; 
 # endif
+	// 获取空闲列表索引
   static  size_t _S_freelist_index(size_t __bytes) {
         return (((__bytes) + (size_t)_ALIGN-1)/(size_t)_ALIGN - 1);
   }
@@ -345,14 +367,17 @@ private:
 public:
 
   /* __n must be > 0      */
+	// 大小必须大于0
   static void* allocate(size_t __n)
   {
     void* __ret = 0;
 
+	// 如果大于_MAX_BYTES直接调用直接分配
     if (__n > (size_t) _MAX_BYTES) {
       __ret = malloc_alloc::allocate(__n);
     }
     else {
+		// 找到空闲列表
       _Obj* __STL_VOLATILE* __my_free_list
           = _S_free_list + _S_freelist_index(__n);
       // Acquire the lock here with a constructor call.
@@ -362,6 +387,7 @@ public:
       /*REFERENCED*/
       _Lock __lock_instance;
 #     endif
+	  // 如果空闲列表没有，就重新分配，如果空闲列表有，直接用空闲列表中的
       _Obj* __RESTRICT __result = *__my_free_list;
       if (__result == 0)
         __ret = _S_refill(_S_round_up(__n));
@@ -377,9 +403,11 @@ public:
   /* __p may not be 0 */
   static void deallocate(void* __p, size_t __n)
   {
+	  // 大小大于_MAX_BYTES直接释放
     if (__n > (size_t) _MAX_BYTES)
       malloc_alloc::deallocate(__p, __n);
     else {
+		// 找到空闲列表
       _Obj* __STL_VOLATILE*  __my_free_list
           = _S_free_list + _S_freelist_index(__n);
       _Obj* __q = (_Obj*)__p;
@@ -389,6 +417,7 @@ public:
       /*REFERENCED*/
       _Lock __lock_instance;
 #       endif /* _NOTHREADS */
+	  // 插入空闲列表头部
       __q -> _M_free_list_link = *__my_free_list;
       *__my_free_list = __q;
       // lock is released here
@@ -424,6 +453,9 @@ inline bool operator!=(const __default_alloc_template<__threads, __inst>&,
 /* the malloc heap too much.                                            */
 /* We assume that size is properly aligned.                             */
 /* We hold the allocation lock.                                         */
+// 我们分配大块内存以防止malloc堆的碎片化
+// 我们假定大小是正确对齐的
+// 我们持有分配锁
 template <bool __threads, int __inst>
 char*
 __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size, 
@@ -432,21 +464,28 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
     char* __result;
     size_t __total_bytes = __size * __nobjs;
     size_t __bytes_left = _S_end_free - _S_start_free;
-
+	// 如果剩下的比想要的还多，直接剩下的分配一块
     if (__bytes_left >= __total_bytes) {
         __result = _S_start_free;
         _S_start_free += __total_bytes;
         return(__result);
-    } else if (__bytes_left >= __size) {
+    } 
+	// 如果剩下的大于等于1个想要的大小，那就能分配几个大小算几个吧
+	else if (__bytes_left >= __size) {
+		// 看剩下的还能分配几个
         __nobjs = (int)(__bytes_left/__size);
         __total_bytes = __size * __nobjs;
         __result = _S_start_free;
         _S_start_free += __total_bytes;
         return(__result);
-    } else {
+    } 
+	// 一个都分配不了的情况
+	else {
+		// 计算分配的大小
         size_t __bytes_to_get = 
 	  2 * __total_bytes + _S_round_up(_S_heap_size >> 4);
         // Try to make use of the left-over piece.
+		// 将原来剩下的挂到空闲列表中去
         if (__bytes_left > 0) {
             _Obj* __STL_VOLATILE* __my_free_list =
                         _S_free_list + _S_freelist_index(__bytes_left);
@@ -454,6 +493,7 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
             ((_Obj*)_S_start_free) -> _M_free_list_link = *__my_free_list;
             *__my_free_list = (_Obj*)_S_start_free;
         }
+		// 直接分配
         _S_start_free = (char*)malloc(__bytes_to_get);
         if (0 == _S_start_free) {
             size_t __i;
@@ -462,6 +502,7 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
             // Try to make do with what we have.  That can't
             // hurt.  We do not try smaller requests, since that tends
             // to result in disaster on multi-process machines.
+			// 看看比他大的空闲列表中是否可以找到合适的
             for (__i = __size;
                  __i <= (size_t) _MAX_BYTES;
                  __i += (size_t) _ALIGN) {
@@ -477,11 +518,13 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
                 }
             }
 	    _S_end_free = 0;	// In case of exception.
+			// 调用第一级分配器的分配函数
             _S_start_free = (char*)malloc_alloc::allocate(__bytes_to_get);
             // This should either throw an
             // exception or remedy the situation.  Thus we assume it
             // succeeded.
         }
+		// 更新堆大小和目前空闲的大小
         _S_heap_size += __bytes_to_get;
         _S_end_free = _S_start_free + __bytes_to_get;
         return(_S_chunk_alloc(__size, __nobjs));
@@ -503,20 +546,24 @@ __default_alloc_template<__threads, __inst>::_S_refill(size_t __n)
     _Obj* __current_obj;
     _Obj* __next_obj;
     int __i;
-
+	// 如果只分配到一个，直接返回
     if (1 == __nobjs) return(__chunk);
+	// 得到空闲索引
     __my_free_list = _S_free_list + _S_freelist_index(__n);
 
     /* Build free list in chunk */
       __result = (_Obj*)__chunk;
+	  // 后面一个加入空闲列表
       *__my_free_list = __next_obj = (_Obj*)(__chunk + __n);
       for (__i = 1; ; __i++) {
         __current_obj = __next_obj;
         __next_obj = (_Obj*)((char*)__next_obj + __n);
+		// 最后一个了
         if (__nobjs - 1 == __i) {
             __current_obj -> _M_free_list_link = 0;
             break;
         } else {
+			// 空闲结点都串起来
             __current_obj -> _M_free_list_link = __next_obj;
         }
       }
@@ -531,14 +578,18 @@ __default_alloc_template<threads, inst>::reallocate(void* __p,
 {
     void* __result;
     size_t __copy_sz;
-
+	// 如果原始大小和新大小都大于_MAX_BYTES，直接调用realloc
     if (__old_sz > (size_t) _MAX_BYTES && __new_sz > (size_t) _MAX_BYTES) {
         return(realloc(__p, __new_sz));
     }
+
+	// 如果老的和新的规整以后是同样大小，那原来的内存就足够使用了，返回原来的指针
     if (_S_round_up(__old_sz) == _S_round_up(__new_sz)) return(__p);
     __result = allocate(__new_sz);
+	// 找到拷贝长度，然后拷贝
     __copy_sz = __new_sz > __old_sz? __old_sz : __new_sz;
     memcpy(__result, __p, __copy_sz);
+	// 释放原来的内存
     deallocate(__p, __old_sz);
     return(__result);
 }

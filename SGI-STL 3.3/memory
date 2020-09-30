@@ -34,7 +34,8 @@ template<class _Tp1> struct auto_ptr_ref {
 };
 
 #endif
-
+// 注意auto_ptr赋值以后，指针转移，就是从原来的转移到新的，原来的失去效果;
+// 而不是通过引用计数来实现
 template <class _Tp> class auto_ptr {
 private:
   _Tp* _M_ptr;
@@ -50,6 +51,7 @@ public:
     : _M_ptr(__a.release()) {}
 #endif /* __STL_MEMBER_TEMPLATES */
 
+  // 如果当前指针中有值，先释放内存，在赋值
   auto_ptr& operator=(auto_ptr& __a) __STL_NOTHROW {
     if (&__a != this) {
       delete _M_ptr;
@@ -84,11 +86,14 @@ public:
   _Tp* get() const __STL_NOTHROW {
     return _M_ptr;
   }
+ 
+  // 设置当前的指针为空，并把原始值返回
   _Tp* release() __STL_NOTHROW {
     _Tp* __tmp = _M_ptr;
     _M_ptr = 0;
     return __tmp;
   }
+  // 设置当前的指针为空，如果原指针不为空，就释放内存
   void reset(_Tp* __p = 0) __STL_NOTHROW {
     if (__p != _M_ptr) {
       delete _M_ptr;

@@ -23,6 +23,14 @@
 // Standard-conforming allocators have a very different interface.  The
 // standard default allocator is declared in the header <memory>.
 
+// 注意注释的几个警告：
+// 不建议包含该文件，这只是原始HP的风格的默认分配器，提供它只是为了向后兼容，
+// 该文件在后续版本中将会被移除
+
+// 不要使用该文件！！！除非你使用老的容器实现，该容器需要HP风格接口的分配器
+
+// 符合标准的分配器具有完全不同的接口，在<memory>的前面声明了标准的默认分配器
+
 #ifndef DEFALLOC_H
 #define DEFALLOC_H
 
@@ -36,7 +44,9 @@
 
 template <class T>
 inline T* allocate(ptrdiff_t size, T*) {
+	// 卸载目前的内存分配异常处理函数
     set_new_handler(0);
+	// 分配size个T的空间
     T* tmp = (T*)(::operator new((size_t)(size * sizeof(T))));
     if (tmp == 0) {
 	cerr << "out of memory" << endl; 
@@ -50,7 +60,7 @@ template <class T>
 inline void deallocate(T* buffer) {
     ::operator delete(buffer);
 }
-
+// SGI-STL默认的分配器为alloc而不是allocator
 template <class T>
 class allocator {
 public:
@@ -77,6 +87,7 @@ public:
     }
 };
 
+// 特化版本
 class allocator<void> {
 public:
     typedef void* pointer;

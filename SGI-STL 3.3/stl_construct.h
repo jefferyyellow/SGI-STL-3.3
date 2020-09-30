@@ -41,23 +41,29 @@ __STL_BEGIN_NAMESPACE
 // the library, so that standard-conforming pieces don't have to rely on
 // non-standard extensions.
 
-// Internal names
+// 构造和析构。这些函数不是C++标准的一部分，提供是为了向后兼容HP风格的STL。
+// 我们也提供了内部名字_Construct和_Destroy用于该库，所以符合标准的部分不需要依赖非标准的扩展
 
+// Internal names
+// 使用placement new在__p指向的内存上构造__value值的对象
 template <class _T1, class _T2>
 inline void _Construct(_T1* __p, const _T2& __value) {
   new ((void*) __p) _T1(__value);
 }
 
+// 使用placement new在__p指向的内存上调用默认构造函数
 template <class _T1>
 inline void _Construct(_T1* __p) {
   new ((void*) __p) _T1();
 }
 
+// 明确调用析构函数
 template <class _Tp>
 inline void _Destroy(_Tp* __pointer) {
   __pointer->~_Tp();
 }
 
+// 不是Trivial的析构函数，就得一个个析构，注意：__false_type，不是无用的析构函数，那就有用的析构（有点绕）
 template <class _ForwardIterator>
 void
 __destroy_aux(_ForwardIterator __first, _ForwardIterator __last, __false_type)
@@ -66,6 +72,7 @@ __destroy_aux(_ForwardIterator __first, _ForwardIterator __last, __false_type)
     destroy(&*__first);
 }
 
+// 是Trivial的析构函数，就不用管了，注意：__true_type，是无用的析构函数
 template <class _ForwardIterator> 
 inline void __destroy_aux(_ForwardIterator, _ForwardIterator, __true_type) {}
 
@@ -75,6 +82,7 @@ __destroy(_ForwardIterator __first, _ForwardIterator __last, _Tp*)
 {
   typedef typename __type_traits<_Tp>::has_trivial_destructor
           _Trivial_destructor;
+  // 根据_Trivial_destructor的不同调用不同的版本
   __destroy_aux(__first, __last, _Trivial_destructor());
 }
 
@@ -94,7 +102,7 @@ inline void _Destroy(wchar_t*, wchar_t*) {}
 
 // --------------------------------------------------
 // Old names from the HP STL.
-
+// HP风格的接口，只是上面的简单封装
 template <class _T1, class _T2>
 inline void construct(_T1* __p, const _T2& __value) {
   _Construct(__p, __value);

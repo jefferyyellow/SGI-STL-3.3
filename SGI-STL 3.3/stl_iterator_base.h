@@ -38,18 +38,20 @@
 #include <concept_checks.h>
 
 __STL_BEGIN_NAMESPACE
-
-struct input_iterator_tag {};
-struct output_iterator_tag {};
-struct forward_iterator_tag : public input_iterator_tag {};
-struct bidirectional_iterator_tag : public forward_iterator_tag {};
-struct random_access_iterator_tag : public bidirectional_iterator_tag {};
+// 五种类型的迭代器
+struct input_iterator_tag {};	// 输入迭代器
+struct output_iterator_tag {};	// 输出迭代器
+struct forward_iterator_tag : public input_iterator_tag {};					// 前置迭代器
+struct bidirectional_iterator_tag : public forward_iterator_tag {};			// 双向迭代器
+struct random_access_iterator_tag : public bidirectional_iterator_tag {};	// 随机访问迭代器
 
 // The base classes input_iterator, output_iterator, forward_iterator,
 // bidirectional_iterator, and random_access_iterator are not part of
 // the C++ standard.  (They have been replaced by struct iterator.)
 // They are included for backward compatibility with the HP STL.
-
+// 这些基本的类input_iterator，output_iterator，forward_iterator，
+// bidirectional_iterator, and random_access_iterator不属于C++标准的一部分
+// (它们已经被结构体类型的迭代器所取代），包含他们的目的是为了向后兼容HP STL
 template <class _Tp, class _Distance> struct input_iterator {
   typedef input_iterator_tag iterator_category;
   typedef _Tp                value_type;
@@ -91,6 +93,7 @@ template <class _Tp, class _Distance> struct random_access_iterator {
   typedef _Tp&                       reference;
 };
 
+// 提供的标准迭代器的一个形式，自行开发的迭代器最后继承下面这个std::iterator
 #ifdef __STL_USE_NAMESPACES
 template <class _Category, class _Tp, class _Distance = ptrdiff_t,
           class _Pointer = _Tp*, class _Reference = _Tp&>
@@ -104,7 +107,7 @@ struct iterator {
 #endif /* __STL_USE_NAMESPACES */
 
 #ifdef __STL_CLASS_PARTIAL_SPECIALIZATION
-
+// 迭代器特征提取器
 template <class _Iterator>
 struct iterator_traits {
   typedef typename _Iterator::iterator_category iterator_category;
@@ -114,6 +117,7 @@ struct iterator_traits {
   typedef typename _Iterator::reference         reference;
 };
 
+// 迭代器特征提取器，指针版本
 template <class _Tp>
 struct iterator_traits<_Tp*> {
   typedef random_access_iterator_tag iterator_category;
@@ -123,6 +127,7 @@ struct iterator_traits<_Tp*> {
   typedef _Tp&                        reference;
 };
 
+// 迭代器特征提取器，const指针版本
 template <class _Tp>
 struct iterator_traits<const _Tp*> {
   typedef random_access_iterator_tag iterator_category;
@@ -136,7 +141,8 @@ struct iterator_traits<const _Tp*> {
 // value_type are not part of the C++ standard.  (They have been
 // replaced by struct iterator_traits.)  They are included for
 // backward compatibility with the HP STL.
-
+// 这些重载的iterator_category，distance_type和value_type不是C++标准的一部分
+// (他们已经被结构体iterator_traits所取代）。包含他们是为了向后兼容HP STL
 // We introduce internal names for these functions.
 
 template <class _Iter>
