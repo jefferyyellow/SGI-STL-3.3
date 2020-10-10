@@ -66,7 +66,8 @@
  * turns out to violate the C++ standard (it can be detected using
  * template template parameters), and it has been removed.
  */
-
+// 前一个版本的deque，有一个额外的模板参数，以便用户能控制节点大小，该扩展事实证明违反了C++标准，
+// （可以使用模板参数检测），并且已经被删除了
 __STL_BEGIN_NAMESPACE 
 
 #if defined(__sgi) && !defined(__GNUC__) && (_MIPS_SIM != _MIPS_SIM_ABI32)
@@ -76,6 +77,8 @@ __STL_BEGIN_NAMESPACE
 
 // Note: this function is simply a kludge to work around several compilers'
 //  bugs in handling constant expressions.
+// 这个函数是方便不同编译器处理常量表达式的bug
+// 小于512，一个内存节点512/__size个元素，超过512就是一个内存节点一个元素
 inline size_t __deque_buf_size(size_t __size) {
   return __size < 512 ? size_t(512 / __size) : size_t(1);
 }
@@ -95,10 +98,13 @@ struct _Deque_iterator {
   typedef _Tp** _Map_pointer;
 
   typedef _Deque_iterator _Self;
-
+  // 当前元素指针
   _Tp* _M_cur;
+  // 第一个元素指针
   _Tp* _M_first;
+  // 最后一个元素指针
   _Tp* _M_last;
+  // 内存节点指针
   _Map_pointer _M_node;
 
   _Deque_iterator(_Tp* __x, _Map_pointer __y) 
@@ -115,14 +121,18 @@ struct _Deque_iterator {
 #endif /* __SGI_STL_NO_ARROW_OPERATOR */
 
   difference_type operator-(const _Self& __x) const {
+	  // 每个内存节点_S_buffer_size()个元素
     return difference_type(_S_buffer_size()) * (_M_node - __x._M_node - 1) +
       (_M_cur - _M_first) + (__x._M_last - __x._M_cur);
   }
 
   _Self& operator++() {
     ++_M_cur;
+	// 如果到了最末端，换下一个内存节点
     if (_M_cur == _M_last) {
+		// 设置新的内存节点了
       _M_set_node(_M_node + 1);
+	  // 同步_M_cur
       _M_cur = _M_first;
     }
     return *this; 
@@ -134,8 +144,11 @@ struct _Deque_iterator {
   }
 
   _Self& operator--() {
+	  // 如果到最前端，换上一个内存节点
     if (_M_cur == _M_first) {
+		// 设置新的内存节点了
       _M_set_node(_M_node - 1);
+	  // 同步_M_cur
       _M_cur = _M_last;
     }
     --_M_cur;
@@ -149,14 +162,20 @@ struct _Deque_iterator {
 
   _Self& operator+=(difference_type __n)
   {
+	  // 计算在当前内存节点的偏移
     difference_type __offset = __n + (_M_cur - _M_first);
+	// 如果还在内存节点内
     if (__offset >= 0 && __offset < difference_type(_S_buffer_size()))
       _M_cur += __n;
     else {
+		// 超出节点的情况
+		// 如果__offset > 0, __offset / _S_buffer_size()取整
+		// 如果__offset < 0, -((-__offset - 1) / _S_buffer_size()) - 1
       difference_type __node_offset =
         __offset > 0 ? __offset / difference_type(_S_buffer_size())
                    : -difference_type((-__offset - 1) / _S_buffer_size()) - 1;
       _M_set_node(_M_node + __node_offset);
+	  // 计算当前的元素指针
       _M_cur = _M_first + 
         (__offset - __node_offset * difference_type(_S_buffer_size()));
     }
@@ -168,7 +187,7 @@ struct _Deque_iterator {
     _Self __tmp = *this;
     return __tmp += __n;
   }
-
+  
   _Self& operator-=(difference_type __n) { return *this += -__n; }
  
   _Self operator-(difference_type __n) const {
@@ -187,7 +206,7 @@ struct _Deque_iterator {
   bool operator>(const _Self& __x) const  { return __x < *this; }
   bool operator<=(const _Self& __x) const { return !(__x < *this); }
   bool operator>=(const _Self& __x) const { return !(*this < __x); }
-
+  // 设置新的节点
   void _M_set_node(_Map_pointer __new_node) {
     _M_node = __new_node;
     _M_first = *__new_node;
@@ -226,10 +245,12 @@ inline ptrdiff_t* distance_type(const _Deque_iterator<_Tp,_Ref,_Ptr>&) {
 //  exception safety easier.  Second, the base class encapsulates all of
 //  the differences between SGI-style allocators and standard-conforming
 //  allocators.
-
+// Deque的基类，两个目的：第一：他构造和析构存储器（并不初始化）。这使得异常安全更加容易
+// 第二：该基类封装了所有SGI风格的分配器和符合标准分配器之间的差异
 #ifdef __STL_USE_STD_ALLOCATORS
 
 // Base class for ordinary allocators.
+// 
 template <class _Tp, class _Alloc, bool __is_static>
 class _Deque_alloc_base {
 public:
@@ -247,23 +268,28 @@ protected:
 
   allocator_type      _M_node_allocator;
   _Map_allocator_type _M_map_allocator;
-
+  // 分配内存节点
   _Tp* _M_allocate_node() {
     return _M_node_allocator.allocate(__deque_buf_size(sizeof(_Tp)));
   }
+  // 释放内存节点
   void _M_deallocate_node(_Tp* __p) {
     _M_node_allocator.deallocate(__p, __deque_buf_size(sizeof(_Tp)));
   }
+  // 分配内存节点指针数组内存
   _Tp** _M_allocate_map(size_t __n) 
     { return _M_map_allocator.allocate(__n); }
+  // 释放内存节点指针数组内存
   void _M_deallocate_map(_Tp** __p, size_t __n) 
     { _M_map_allocator.deallocate(__p, __n); }
-
+  // 内存节点指针数组
   _Tp** _M_map;
+  // 内存节点大小
   size_t _M_map_size;
 };
 
 // Specialization for instanceless allocators.
+// _Deque_alloc_base的特化版本，
 template <class _Tp, class _Alloc>
 class _Deque_alloc_base<_Tp, _Alloc, true>
 {
@@ -276,19 +302,24 @@ public:
 protected:
   typedef typename _Alloc_traits<_Tp, _Alloc>::_Alloc_type _Node_alloc_type;
   typedef typename _Alloc_traits<_Tp*, _Alloc>::_Alloc_type _Map_alloc_type;
-
+  // 分配内存节点
   _Tp* _M_allocate_node() {
     return _Node_alloc_type::allocate(__deque_buf_size(sizeof(_Tp)));
   }
+  // 释放内存节点
   void _M_deallocate_node(_Tp* __p) {
     _Node_alloc_type::deallocate(__p, __deque_buf_size(sizeof(_Tp)));
   }
+  // 分配内存节点指针数组内存
   _Tp** _M_allocate_map(size_t __n) 
     { return _Map_alloc_type::allocate(__n); }
+  // 释放内存节点指针数组内存
   void _M_deallocate_map(_Tp** __p, size_t __n) 
     { _Map_alloc_type::deallocate(__p, __n); }
 
+  // 内存节点指针数组
   _Tp** _M_map;
+  // 内存节点指针数组大小
   size_t _M_map_size;
 };
 
@@ -305,6 +336,7 @@ public:
   typedef _Deque_iterator<_Tp,_Tp&,_Tp*>             iterator;
   typedef _Deque_iterator<_Tp,const _Tp&,const _Tp*> const_iterator;
 
+  // _M_initialize_map初始化内存节点指针数组
   _Deque_base(const allocator_type& __a, size_t __num_elements)
     : _Base(__a), _M_start(), _M_finish()
     { _M_initialize_map(__num_elements); }
@@ -356,11 +388,13 @@ protected:
 
   typedef simple_alloc<_Tp, _Alloc>  _Node_alloc_type;
   typedef simple_alloc<_Tp*, _Alloc> _Map_alloc_type;
-
+  // 分配内存节点
   _Tp* _M_allocate_node()
     { return _Node_alloc_type::allocate(__deque_buf_size(sizeof(_Tp))); }
+   // 分配内存节点指针数组内存
   void _M_deallocate_node(_Tp* __p)
     { _Node_alloc_type::deallocate(__p, __deque_buf_size(sizeof(_Tp))); }
+   // 释放内存节点指针数组内存
   _Tp** _M_allocate_map(size_t __n) 
     { return _Map_alloc_type::allocate(__n); }
   void _M_deallocate_map(_Tp** __p, size_t __n) 
@@ -374,29 +408,36 @@ protected:
 template <class _Tp, class _Alloc>
 _Deque_base<_Tp,_Alloc>::~_Deque_base() {
   if (_M_map) {
+	  // 释放内存节点
     _M_destroy_nodes(_M_start._M_node, _M_finish._M_node + 1);
+	// 释放内存节点指针数组内存
     _M_deallocate_map(_M_map, _M_map_size);
   }
 }
 
+// 初始化内存节点指针数组和内存节点
 template <class _Tp, class _Alloc>
 void
 _Deque_base<_Tp,_Alloc>::_M_initialize_map(size_t __num_elements)
 {
+	// 计算内存节点数目
   size_t __num_nodes = 
     __num_elements / __deque_buf_size(sizeof(_Tp)) + 1;
-
+  // 计算内存节点数组的大小，最小_S_initial_map_size，最少前后预留一个内存节点指针空位
   _M_map_size = max((size_t) _S_initial_map_size, __num_nodes + 2);
+  // 计算内存节点数组大小
   _M_map = _M_allocate_map(_M_map_size);
-
+  // 取中间部分拿来用
   _Tp** __nstart = _M_map + (_M_map_size - __num_nodes) / 2;
   _Tp** __nfinish = __nstart + __num_nodes;
     
+	// 创建内存节点
   __STL_TRY {
     _M_create_nodes(__nstart, __nfinish);
   }
   __STL_UNWIND((_M_deallocate_map(_M_map, _M_map_size), 
                 _M_map = 0, _M_map_size = 0));
+  // 初始化开始和结束两个迭代器
   _M_start._M_set_node(__nstart);
   _M_finish._M_set_node(__nfinish - 1);
   _M_start._M_cur = _M_start._M_first;
@@ -404,6 +445,7 @@ _Deque_base<_Tp,_Alloc>::_M_initialize_map(size_t __num_elements)
                __num_elements % __deque_buf_size(sizeof(_Tp));
 }
 
+// 根据内存节点指针数组的前后地址，创建内存节点
 template <class _Tp, class _Alloc>
 void _Deque_base<_Tp,_Alloc>::_M_create_nodes(_Tp** __nstart, _Tp** __nfinish)
 {
@@ -415,6 +457,7 @@ void _Deque_base<_Tp,_Alloc>::_M_create_nodes(_Tp** __nstart, _Tp** __nfinish)
   __STL_UNWIND(_M_destroy_nodes(__nstart, __cur));
 }
 
+// 根据内存节点指针数组的前后地址，销毁内存节点
 template <class _Tp, class _Alloc>
 void
 _Deque_base<_Tp,_Alloc>::_M_destroy_nodes(_Tp** __nstart, _Tp** __nfinish)
@@ -460,6 +503,7 @@ public:                         // Iterators
 
 protected:                      // Internal typedefs
   typedef pointer* _Map_pointer;
+  // 一个内存节点的元素数目
   static size_t _S_buffer_size() { return __deque_buf_size(sizeof(_Tp)); }
 
 protected:
@@ -520,9 +564,10 @@ public:                         // Basic accessors
     --__tmp;
     return *__tmp;
   }
-
+ // 查看迭代器重载的减号操作符，计算deque的大小
   size_type size() const { return _M_finish - _M_start; }
   size_type max_size() const { return size_type(-1); }
+  // 查看迭代器重载的==操作符
   bool empty() const { return _M_finish == _M_start; }
 
 public:                         // Constructor, destructor.
@@ -577,10 +622,13 @@ public:                         // Constructor, destructor.
     const size_type __len = size();
     if (&__x != this) {
       if (__len >= __x.size())
+		  // 拷贝内容，把多余的删除掉
         erase(copy(__x.begin(), __x.end(), _M_start), _M_finish);
       else {
         const_iterator __mid = __x.begin() + difference_type(__len);
+		// 拷贝内容
         copy(__x.begin(), __mid, _M_start);
+		// 将没有放下的插入在后面
         insert(_M_finish, __mid, __x.end());
       }
     }
@@ -602,11 +650,15 @@ public:
 
   void _M_fill_assign(size_type __n, const _Tp& __val) {
     if (__n > size()) {
+		// 将原来的元素赋值
       fill(begin(), end(), __val);
+	  // 插入多余的
       insert(end(), __n - size(), __val);
     }
     else {
+		// 删除多余的
       erase(begin() + __n, end());
+	  // 剩下的赋值
       fill(begin(), end(), __val);
     }
   }
@@ -643,14 +695,20 @@ private:                        // helper functions for assign()
   void _M_assign_aux(_ForwardIterator __first, _ForwardIterator __last,
                      forward_iterator_tag) {
     size_type __len = 0;
+	// 计算大小
     distance(__first, __last, __len);
+	// 比现在的大小大
     if (__len > size()) {
       _ForwardIterator __mid = __first;
+	  // 找到拷贝结束的迭代器
       advance(__mid, size());
+	  // 拷贝过去
       copy(__first, __mid, begin());
+	  // 插入剩下的
       insert(end(), __mid, __last);
     }
     else
+		// 拷贝过去后删除多余的
       erase(copy(__first, __last, begin()), end());
   }
 
@@ -659,8 +717,11 @@ private:                        // helper functions for assign()
 public:                         // push_* and pop_*
   
   void push_back(const value_type& __t) {
+	  // 如果当前内存节点后部还有空位
     if (_M_finish._M_cur != _M_finish._M_last - 1) {
+		// 构造
       construct(_M_finish._M_cur, __t);
+	  // 迭代器后移
       ++_M_finish._M_cur;
     }
     else
@@ -668,8 +729,11 @@ public:                         // push_* and pop_*
   }
 
   void push_back() {
+	  // 如果当前内存节点后部还有空位
     if (_M_finish._M_cur != _M_finish._M_last - 1) {
+		// 构造
       construct(_M_finish._M_cur);
+	  // 迭代器后移
       ++_M_finish._M_cur;
     }
     else
@@ -677,6 +741,7 @@ public:                         // push_* and pop_*
   }
 
   void push_front(const value_type& __t) {
+	  // 如果当前内存节点前部还有空位
     if (_M_start._M_cur != _M_start._M_first) {
       construct(_M_start._M_cur - 1, __t);
       --_M_start._M_cur;
@@ -686,6 +751,7 @@ public:                         // push_* and pop_*
   }
 
   void push_front() {
+	  // 如果当前内存节点前部还有空位
     if (_M_start._M_cur != _M_start._M_first) {
       construct(_M_start._M_cur - 1);
       --_M_start._M_cur;
@@ -694,10 +760,12 @@ public:                         // push_* and pop_*
       _M_push_front_aux();
   }
 
-
+  // 
   void pop_back() {
+	  // 最后面的内存节点还有其他元素
     if (_M_finish._M_cur != _M_finish._M_first) {
       --_M_finish._M_cur;
+	  // 析构
       destroy(_M_finish._M_cur);
     }
     else
@@ -705,7 +773,9 @@ public:                         // push_* and pop_*
   }
 
   void pop_front() {
+	  // 最前面的内存节点还有其他元素
     if (_M_start._M_cur != _M_start._M_last - 1) {
+		// 析构
       destroy(_M_start._M_cur);
       ++_M_start._M_cur;
     }
