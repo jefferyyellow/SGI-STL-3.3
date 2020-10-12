@@ -786,12 +786,16 @@ public:                         // push_* and pop_*
 public:                         // Insert
 
   iterator insert(iterator position, const value_type& __x) {
+	  // 如果最前面，那就直接调用push_front
     if (position._M_cur == _M_start._M_cur) {
       push_front(__x);
+	  // 插入的位置应该就是_M_start
       return _M_start;
     }
+	// 如果是最后面，那就直接调用push_back
     else if (position._M_cur == _M_finish._M_cur) {
       push_back(__x);
+	  // 插入的位置应该是_M_finish的前一个
       iterator __tmp = _M_finish;
       --__tmp;
       return __tmp;
@@ -800,10 +804,10 @@ public:                         // Insert
       return _M_insert_aux(position, __x);
     }
   }
-
+  // 在指定位置插入一个默认值
   iterator insert(iterator __position)
     { return insert(__position, value_type()); }
-
+  // 在指定位置插入__n个__x
   void insert(iterator __pos, size_type __n, const value_type& __x)
     { _M_fill_insert(__pos, __n, __x); }
 
@@ -817,7 +821,7 @@ public:                         // Insert
     typedef typename _Is_integer<_InputIterator>::_Integral _Integral;
     _M_insert_dispatch(__pos, __first, __last, _Integral());
   }
-
+  // _InputIterator的整型的特化版本 
   template <class _Integer>
   void _M_insert_dispatch(iterator __pos, _Integer __n, _Integer __x,
                           __true_type) {
@@ -842,9 +846,11 @@ public:                         // Insert
 
   void resize(size_type __new_size, const value_type& __x) {
     const size_type __len = size();
+	// 新的大小比原来的小，删除多出来的
     if (__new_size < __len) 
       erase(_M_start + __new_size, _M_finish);
     else
+		// 新的大小比较大，在后面插入多出来的
       insert(_M_finish, __new_size - __len, __x);
   }
 
@@ -855,12 +861,18 @@ public:                         // Erase
     iterator __next = __pos;
     ++__next;
     difference_type __index = __pos - _M_start;
+	// 如果删除的位置在前半部分
     if (size_type(__index) < (this->size() >> 1)) {
+		// 那就将Pos前面的往后挪一个位置
       copy_backward(_M_start, __pos, __next);
+	  // 把最前面的一个弹出来
       pop_front();
     }
+	// 如果删除的位置在后半部分
     else {
+		// 拷贝Pos后面的部分往前挪一个位置
       copy(__next, _M_finish, __pos);
+	  // 将最后的一个弹出来
       pop_back();
     }
     return _M_start + __index;
@@ -931,14 +943,14 @@ protected:                        // Internal insert functions
                      size_type __n);
  
 #endif /* __STL_MEMBER_TEMPLATES */
-
+  // 在前面reserve __n个元素
   iterator _M_reserve_elements_at_front(size_type __n) {
     size_type __vacancies = _M_start._M_cur - _M_start._M_first;
     if (__n > __vacancies) 
       _M_new_elements_at_front(__n - __vacancies);
     return _M_start - difference_type(__n);
   }
-
+  // 在后边reserve __n个元素
   iterator _M_reserve_elements_at_back(size_type __n) {
     size_type __vacancies = (_M_finish._M_last - _M_finish._M_cur) - 1;
     if (__n > __vacancies)
@@ -954,12 +966,14 @@ protected:                      // Allocation of _M_map and nodes
   // Makes sure the _M_map has space for new nodes.  Does not actually
   //  add the nodes.  Can invalidate _M_map pointers.  (And consequently, 
   //  deque iterators.)
+  // 确保_M_map有空间放下新的nodes,不需要真的加节点，会导致_M_map指针失效
 
+	// 如果空间不够，重新分配map，并且新加的放在前面
   void _M_reserve_map_at_back (size_type __nodes_to_add = 1) {
     if (__nodes_to_add + 1 > _M_map_size - (_M_finish._M_node - _M_map))
       _M_reallocate_map(__nodes_to_add, false);
   }
-
+  // 如果空间不够，重新分配map，并且新加的放在后面
   void _M_reserve_map_at_front (size_type __nodes_to_add = 1) {
     if (__nodes_to_add > size_type(_M_start._M_node - _M_map))
       _M_reallocate_map(__nodes_to_add, true);
@@ -978,11 +992,14 @@ void deque<_Tp, _Alloc>
   ::_M_assign_aux(_InputIter __first, _InputIter __last, input_iterator_tag)
 {
   iterator __cur = begin();
+  // 
   for ( ; __first != __last && __cur != end(); ++__cur, ++__first)
     *__cur = *__first;
+  // 如果赋值的元素少，将后面的都删除掉
   if (__first == __last)
     erase(__cur, end());
   else
+	  // 如果赋值的元素多，将剩下的插入在后面
     insert(end(), __first, __last);
 }
 
@@ -992,7 +1009,9 @@ template <class _Tp, class _Alloc>
 void deque<_Tp, _Alloc>::_M_fill_insert(iterator __pos,
                                         size_type __n, const value_type& __x)
 {
+	// 如果插入在最前面
   if (__pos._M_cur == _M_start._M_cur) {
+	  // 在前面预留出__n个元素的位置
     iterator __new_start = _M_reserve_elements_at_front(__n);
     __STL_TRY {
       uninitialized_fill(__new_start, _M_start, __x);
@@ -1000,7 +1019,9 @@ void deque<_Tp, _Alloc>::_M_fill_insert(iterator __pos,
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
+  // 如果插入在最后面
   else if (__pos._M_cur == _M_finish._M_cur) {
+	   // 在后面预留出__n个元素的位置
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     __STL_TRY {
       uninitialized_fill(_M_finish, __new_finish, __x);
@@ -1009,6 +1030,7 @@ void deque<_Tp, _Alloc>::_M_fill_insert(iterator __pos,
     __STL_UNWIND(_M_destroy_nodes(_M_finish._M_node + 1, 
                                   __new_finish._M_node + 1));    
   }
+  // 插入中间
   else 
     _M_insert_aux(__pos, __n, __x);
 }
@@ -1020,23 +1042,30 @@ void deque<_Tp, _Alloc>::insert(iterator __pos,
                                 const value_type* __first,
                                 const value_type* __last) {
   size_type __n = __last - __first;
+  // 在最前面插入
   if (__pos._M_cur == _M_start._M_cur) {
+	  // 在最前面预留__n的空间
     iterator __new_start = _M_reserve_elements_at_front(__n);
     __STL_TRY {
+		// 将值拷进去
       uninitialized_copy(__first, __last, __new_start);
       _M_start = __new_start;
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
+  // 在最后面插入
   else if (__pos._M_cur == _M_finish._M_cur) {
+	  // 在最后面预留__n的空间
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     __STL_TRY {
+		// 将值拷进去
       uninitialized_copy(__first, __last, _M_finish);
       _M_finish = __new_finish;
     }
     __STL_UNWIND(_M_destroy_nodes(_M_finish._M_node + 1, 
                                   __new_finish._M_node + 1));
   }
+  // 中间插入
   else
     _M_insert_aux(__pos, __first, __last, __n);
 }
@@ -1046,23 +1075,30 @@ void deque<_Tp,_Alloc>::insert(iterator __pos,
                                const_iterator __first, const_iterator __last)
 {
   size_type __n = __last - __first;
+  // 在最前面插入
   if (__pos._M_cur == _M_start._M_cur) {
+	   // 在最前面预留__n的空间
     iterator __new_start = _M_reserve_elements_at_front(__n);
     __STL_TRY {
+		// 将值拷进去
       uninitialized_copy(__first, __last, __new_start);
       _M_start = __new_start;
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
+  // 在最后面插入
   else if (__pos._M_cur == _M_finish._M_cur) {
+	  // 在最后面预留__n的空间
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     __STL_TRY {
+		// 将值拷进去
       uninitialized_copy(__first, __last, _M_finish);
       _M_finish = __new_finish;
     }
     __STL_UNWIND(_M_destroy_nodes(_M_finish._M_node + 1, 
                  __new_finish._M_node + 1));
   }
+  // 中间插入
   else
     _M_insert_aux(__pos, __first, __last, __n);
 }
@@ -1073,6 +1109,7 @@ template <class _Tp, class _Alloc>
 typename deque<_Tp,_Alloc>::iterator 
 deque<_Tp,_Alloc>::erase(iterator __first, iterator __last)
 {
+	// 如果是清空整个deque，直接调用clear函数
   if (__first == _M_start && __last == _M_finish) {
     clear();
     return _M_finish;
@@ -1080,17 +1117,25 @@ deque<_Tp,_Alloc>::erase(iterator __first, iterator __last)
   else {
     difference_type __n = __last - __first;
     difference_type __elems_before = __first - _M_start;
+	// 删除的大部分在前半部分
     if (__elems_before < difference_type((this->size() - __n) / 2)) {
+		// 将元素往后移
       copy_backward(_M_start, __first, __last);
       iterator __new_start = _M_start + __n;
+	  // 析构
       destroy(_M_start, __new_start);
+	  // 释放内存
       _M_destroy_nodes(__new_start._M_node, _M_start._M_node);
       _M_start = __new_start;
     }
+	// 删除的大部分在后半部分
     else {
+		// 将元素前移
       copy(__last, _M_finish, __first);
       iterator __new_finish = _M_finish - __n;
+	  // 析构
       destroy(__new_finish, _M_finish);
+	  // 释放内存
       _M_destroy_nodes(__new_finish._M_node + 1, _M_finish._M_node + 1);
       _M_finish = __new_finish;
     }
@@ -1101,21 +1146,25 @@ deque<_Tp,_Alloc>::erase(iterator __first, iterator __last)
 template <class _Tp, class _Alloc> 
 void deque<_Tp,_Alloc>::clear()
 {
+	// 遍历每一个内存节点，注意:_M_start._M_node + 1
   for (_Map_pointer __node = _M_start._M_node + 1;
        __node < _M_finish._M_node;
        ++__node) {
+	  // 析构每一个内存节点里面的元素
     destroy(*__node, *__node + _S_buffer_size());
     _M_deallocate_node(*__node);
   }
-
+  // 如果不在一个内存节点，析构最前面和最后的内存节点的元素
   if (_M_start._M_node != _M_finish._M_node) {
     destroy(_M_start._M_cur, _M_start._M_last);
     destroy(_M_finish._M_first, _M_finish._M_cur);
+	// 释放最后的内存节点
     _M_deallocate_node(_M_finish._M_first);
   }
   else
+	  // 如果是同一个内存节点，析构就好，不释放内存节点
     destroy(_M_start._M_cur, _M_finish._M_cur);
-
+  // 保留一个内存节点，可以参看一下_M_initialize_map传入参数0时，也会分配一个内存节点
   _M_finish = _M_start;
 }
 
@@ -1125,22 +1174,26 @@ template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_fill_initialize(const value_type& __value) {
   _Map_pointer __cur;
   __STL_TRY {
+	  // 遍历内存节点，fill元素
     for (__cur = _M_start._M_node; __cur < _M_finish._M_node; ++__cur)
       uninitialized_fill(*__cur, *__cur + _S_buffer_size(), __value);
+	// 构造最后一个内存节点，这个节点元素不一定满，单独构造
     uninitialized_fill(_M_finish._M_first, _M_finish._M_cur, __value);
   }
   __STL_UNWIND(destroy(_M_start, iterator(*__cur, __cur)));
 }
 
 #ifdef __STL_MEMBER_TEMPLATES  
-
+// _InputIterator的版本
 template <class _Tp, class _Alloc> template <class _InputIterator>
 void deque<_Tp,_Alloc>::_M_range_initialize(_InputIterator __first,
                                             _InputIterator __last,
                                             input_iterator_tag)
 {
+	// 初始化内存
   _M_initialize_map(0);
   __STL_TRY {
+	  // 挨个压入后面
     for ( ; __first != __last; ++__first)
       push_back(*__first);
   }
@@ -1152,20 +1205,26 @@ void deque<_Tp,_Alloc>::_M_range_initialize(_ForwardIterator __first,
                                             _ForwardIterator __last,
                                             forward_iterator_tag)
 {
+	// 计算元素数量
   size_type __n = 0;
   distance(__first, __last, __n);
+  // 初始化内存
   _M_initialize_map(__n);
 
   _Map_pointer __cur_node;
   __STL_TRY {
+	  // 遍历内存节点，进行赋值
     for (__cur_node = _M_start._M_node; 
          __cur_node < _M_finish._M_node; 
          ++__cur_node) {
       _ForwardIterator __mid = __first;
+	  // 找到拷贝到一个内存节点结束的迭代器
       advance(__mid, _S_buffer_size());
+	  // 赋值
       uninitialized_copy(__first, __mid, *__cur_node);
       __first = __mid;
     }
+	// 拷贝最后多出来的那一部分
     uninitialized_copy(__first, __last, _M_finish._M_first);
   }
   __STL_UNWIND(destroy(_M_start, iterator(*__cur_node, __cur_node)));
@@ -1174,14 +1233,19 @@ void deque<_Tp,_Alloc>::_M_range_initialize(_ForwardIterator __first,
 #endif /* __STL_MEMBER_TEMPLATES */
 
 // Called only if _M_finish._M_cur == _M_finish._M_last - 1.
+// 只有在M_finish._M_cur == _M_finish._M_last - 1才会调用
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_push_back_aux(const value_type& __t)
 {
   value_type __t_copy = __t;
+  // 在后面预留map
   _M_reserve_map_at_back();
+  // 分配内存节点
   *(_M_finish._M_node + 1) = _M_allocate_node();
   __STL_TRY {
+	  // 拷贝构造
     construct(_M_finish._M_cur, __t_copy);
+	// 设置节点和当前的位置
     _M_finish._M_set_node(_M_finish._M_node + 1);
     _M_finish._M_cur = _M_finish._M_first;
   }
@@ -1189,13 +1253,18 @@ void deque<_Tp,_Alloc>::_M_push_back_aux(const value_type& __t)
 }
 
 // Called only if _M_finish._M_cur == _M_finish._M_last - 1.
+// 只有在_M_finish._M_cur == _M_finish._M_last - 1才会调用
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_push_back_aux()
 {
+	// 在后面预留map
   _M_reserve_map_at_back();
+  // 分配内存节点
   *(_M_finish._M_node + 1) = _M_allocate_node();
   __STL_TRY {
+	  // 构造
     construct(_M_finish._M_cur);
+	// 设置节点和当前的位置
     _M_finish._M_set_node(_M_finish._M_node + 1);
     _M_finish._M_cur = _M_finish._M_first;
   }
@@ -1203,41 +1272,55 @@ void deque<_Tp,_Alloc>::_M_push_back_aux()
 }
 
 // Called only if _M_start._M_cur == _M_start._M_first.
+// 只有在_M_start._M_cur == _M_start._M_first才会调用
 template <class _Tp, class _Alloc>
 void  deque<_Tp,_Alloc>::_M_push_front_aux(const value_type& __t)
 {
   value_type __t_copy = __t;
+  // 在前面预留map
   _M_reserve_map_at_front();
+  // 分配内存节点
   *(_M_start._M_node - 1) = _M_allocate_node();
   __STL_TRY {
+	  // 设置节点和当前的位置
     _M_start._M_set_node(_M_start._M_node - 1);
     _M_start._M_cur = _M_start._M_last - 1;
+	// 构造
     construct(_M_start._M_cur, __t_copy);
   }
   __STL_UNWIND((++_M_start, _M_deallocate_node(*(_M_start._M_node - 1))));
 } 
 
 // Called only if _M_start._M_cur == _M_start._M_first.
+// 只有在_M_start._M_cur == _M_start._M_first才会调用
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_push_front_aux()
 {
+	// 在前面预留map
   _M_reserve_map_at_front();
+	// 分配内存节点
   *(_M_start._M_node - 1) = _M_allocate_node();
   __STL_TRY {
+	 // 设置节点和当前的位置
     _M_start._M_set_node(_M_start._M_node - 1);
     _M_start._M_cur = _M_start._M_last - 1;
+	// 构造
     construct(_M_start._M_cur);
   }
   __STL_UNWIND((++_M_start, _M_deallocate_node(*(_M_start._M_node - 1))));
 } 
 
 // Called only if _M_finish._M_cur == _M_finish._M_first.
+// 只有在_M_finish._M_cur == _M_finish._M_first才会调用
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_pop_back_aux()
 {
+	// 释放内存节点
   _M_deallocate_node(_M_finish._M_first);
+   // 设置节点和当前的位置
   _M_finish._M_set_node(_M_finish._M_node - 1);
   _M_finish._M_cur = _M_finish._M_last - 1;
+  // 析构
   destroy(_M_finish._M_cur);
 }
 
@@ -1245,11 +1328,17 @@ void deque<_Tp,_Alloc>::_M_pop_back_aux()
 // if the deque has at least one element (a precondition for this member 
 // function), and if _M_start._M_cur == _M_start._M_last, then the deque 
 // must have at least two nodes.
+// 只有在_M_start._M_cur == _M_start._M_last - 1调用
+// 注意：如果deque至少有一个元素（这个成员函数的前提条件），
+// 如果_M_start._M_cur == _M_start._M_last，则该deque至少有两个nodes
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_pop_front_aux()
 {
+	// 析构
   destroy(_M_start._M_cur);
+  // 删除内存节点
   _M_deallocate_node(_M_start._M_first);
+  // 设置节点和当前的位置
   _M_start._M_set_node(_M_start._M_node + 1);
   _M_start._M_cur = _M_start._M_first;
 }      
@@ -1271,23 +1360,32 @@ deque<_Tp,_Alloc>::insert(iterator __pos,
                           forward_iterator_tag) {
   size_type __n = 0;
   distance(__first, __last, __n);
+  // 插入在最前面
   if (__pos._M_cur == _M_start._M_cur) {
+	  // 在最前面预留空间
     iterator __new_start = _M_reserve_elements_at_front(__n);
     __STL_TRY {
+		// 拷贝进去
       uninitialized_copy(__first, __last, __new_start);
+	  // 开始节点前移
       _M_start = __new_start;
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
+  // 插入在最后面
   else if (__pos._M_cur == _M_finish._M_cur) {
+	  // 在后面预留空间
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     __STL_TRY {
+		// 拷贝进去
       uninitialized_copy(__first, __last, _M_finish);
+	  // 结束的节点后移
       _M_finish = __new_finish;
     }
     __STL_UNWIND(_M_destroy_nodes(_M_finish._M_node + 1, 
                                   __new_finish._M_node + 1));
   }
+  // 插入在中间
   else
     _M_insert_aux(__pos, __first, __last, __n);
 }
@@ -1300,7 +1398,9 @@ deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos, const value_type& __x)
 {
   difference_type __index = __pos - _M_start;
   value_type __x_copy = __x;
+  // 插入的位置在前半部分
   if (size_type(__index) < this->size() / 2) {
+	  // 在最前面构造一个和首节点一样的元素
     push_front(front());
     iterator __front1 = _M_start;
     ++__front1;
@@ -1309,17 +1409,22 @@ deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos, const value_type& __x)
     __pos = _M_start + __index;
     iterator __pos1 = __pos;
     ++__pos1;
+	// 原来的元素往前移一个位置
     copy(__front2, __pos1, __front1);
   }
+  // 插入的位置在后半部分
   else {
+	// 在最后面构造一个和尾节点一样的元素
     push_back(back());
     iterator __back1 = _M_finish;
     --__back1;
     iterator __back2 = __back1;
     --__back2;
     __pos = _M_start + __index;
+	// 原来的元素往后移一个位置
     copy_backward(__pos, __back2, __back1);
   }
+  // 空出来的位置上赋值
   *__pos = __x_copy;
   return __pos;
 }
@@ -1329,7 +1434,9 @@ typename deque<_Tp,_Alloc>::iterator
 deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos)
 {
   difference_type __index = __pos - _M_start;
+  // 插入的位置在前半部分
   if (__index < size() / 2) {
+	  // 在最前面构造一个和首节点一样的元素
     push_front(front());
     iterator __front1 = _M_start;
     ++__front1;
@@ -1338,21 +1445,27 @@ deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos)
     __pos = _M_start + __index;
     iterator __pos1 = __pos;
     ++__pos1;
+	// 原来的元素往前移一个位置
     copy(__front2, __pos1, __front1);
   }
+  // 插入的位置在后半部分
   else {
+	// 在最后面构造一个和尾节点一样的元素
     push_back(back());
     iterator __back1 = _M_finish;
     --__back1;
     iterator __back2 = __back1;
     --__back2;
     __pos = _M_start + __index;
+	// 原来的元素往后移一个位置
     copy_backward(__pos, __back2, __back1);
   }
+  // 空出来的位置上赋值
   *__pos = value_type();
   return __pos;
 }
 
+// 在__pos的前面插入__n个__x
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
                                       size_type __n,
@@ -1361,27 +1474,37 @@ void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
   const difference_type __elems_before = __pos - _M_start;
   size_type __length = this->size();
   value_type __x_copy = __x;
+  // 插入位置在前半部分
   if (__elems_before < difference_type(__length / 2)) {
+	  // 在前面预留出了__n个元素
     iterator __new_start = _M_reserve_elements_at_front(__n);
     iterator __old_start = _M_start;
     __pos = _M_start + __elems_before;
     __STL_TRY {
+		// 如果第一个元素到插入位置的数目大于等于__n
       if (__elems_before >= difference_type(__n)) {
+		  // 原来的最前面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         iterator __start_n = _M_start + difference_type(__n);
         uninitialized_copy(_M_start, __start_n, __new_start);
         _M_start = __new_start;
+		// __elems_before - __n的那部分调用copy拷贝
         copy(__start_n, __pos, __old_start);
+		// 后面的调用fill填充__n个__x
         fill(__pos - difference_type(__n), __pos, __x_copy);
       }
+	  // 如果第一个元素到插入位置的数目小于__n
       else {
+		  // 整个原来的元素放在前面没有初始化的内存上面去，
         __uninitialized_copy_fill(_M_start, __pos, __new_start, 
                                   _M_start, __x_copy);
         _M_start = __new_start;
+		// 调用fill填充__n个__x
         fill(__old_start, __pos, __x_copy);
       }
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
+  // 插入位置在后半部分
   else {
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     iterator __old_finish = _M_finish;
@@ -1389,17 +1512,23 @@ void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
       difference_type(__length) - __elems_before;
     __pos = _M_finish - __elems_after;
     __STL_TRY {
+		// 如果插入位置到第后一个元素的数目大于__n
       if (__elems_after > difference_type(__n)) {
         iterator __finish_n = _M_finish - difference_type(__n);
+		// 原来的最后面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(__finish_n, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// __elems_before - __n的那部分调用copy拷贝
         copy_backward(__pos, __finish_n, __old_finish);
+		// 调用fill填充__n个__x
         fill(__pos, __pos + difference_type(__n), __x_copy);
       }
       else {
+		   // 整个原来的元素放在后面没有初始化的内存上面去，
         __uninitialized_fill_copy(_M_finish, __pos + difference_type(__n),
                                   __x_copy, __pos, _M_finish);
         _M_finish = __new_finish;
+		// 调用fill填充__n个__x
         fill(__pos, __old_finish, __x_copy);
       }
     }
@@ -1418,48 +1547,64 @@ void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
 {
   const difference_type __elemsbefore = __pos - _M_start;
   size_type __length = size();
+  // 插入位置在前半部分
   if (__elemsbefore < __length / 2) {
+	  // 在前面预留出了__n个元素
     iterator __new_start = _M_reserve_elements_at_front(__n);
     iterator __old_start = _M_start;
     __pos = _M_start + __elemsbefore;
     __STL_TRY {
+		// 如果第一个元素到插入位置的数目大于等于__n
       if (__elemsbefore >= difference_type(__n)) {
         iterator __start_n = _M_start + difference_type(__n); 
+		// 原来的最前面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(_M_start, __start_n, __new_start);
         _M_start = __new_start;
+		// __elems_before - __n的那部分调用copy拷贝
         copy(__start_n, __pos, __old_start);
+		// 将值拷贝进去
         copy(__first, __last, __pos - difference_type(__n));
       }
       else {
         _ForwardIterator __mid = __first;
         advance(__mid, difference_type(__n) - __elemsbefore);
+		// 将原来Pos前面的元素移动到未初始化内存上面去，然后把输入参数中__n - __elemsbefore也拷贝到未初始化内存上面去
         __uninitialized_copy_copy(_M_start, __pos, __first, __mid,
                                   __new_start);
         _M_start = __new_start;
+		// 拷贝剩余的元素
         copy(__mid, __last, __old_start);
       }
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
+  // 插入位置在后半部分
   else {
+	  // 在后面预留出了__n个元素
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     iterator __old_finish = _M_finish;
     const difference_type __elemsafter = 
       difference_type(__length) - __elemsbefore;
     __pos = _M_finish - __elemsafter;
     __STL_TRY {
+		// 如果插入位置到第后一个元素的数目大于__n
       if (__elemsafter > difference_type(__n)) {
         iterator __finish_n = _M_finish - difference_type(__n);
+		// 原来的最后面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(__finish_n, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// __elems_before - __n的那部分调用copy_backward拷贝
         copy_backward(__pos, __finish_n, __old_finish);
+		// 将值拷贝进去
         copy(__first, __last, __pos);
       }
       else {
         _ForwardIterator __mid = __first;
         advance(__mid, __elemsafter);
+		// 将把输入参数[__first, __last)中最后的__n - __elemsbefore个元素拷贝到未初始化内存上面去，然后将原来Pos后面的元素移动到未初始化内存上面去，
         __uninitialized_copy_copy(__mid, __last, __pos, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// 拷贝剩下的元素
         copy(__first, __mid, __pos);
       }
     }
@@ -1478,47 +1623,62 @@ void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
 {
   const difference_type __elemsbefore = __pos - _M_start;
   size_type __length = size();
+  // 插入位置在前半部分
   if (__elemsbefore < __length / 2) {
+	// 在前面预留出了__n个元素
     iterator __new_start = _M_reserve_elements_at_front(__n);
     iterator __old_start = _M_start;
     __pos = _M_start + __elemsbefore;
     __STL_TRY {
+		// 如果第一个元素到插入位置的数目大于等于__n
       if (__elemsbefore >= difference_type(__n)) {
         iterator __start_n = _M_start + difference_type(__n);
+		// 原来的最前面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(_M_start, __start_n, __new_start);
         _M_start = __new_start;
+		// __elems_before - __n的那部分调用copy拷贝
         copy(__start_n, __pos, __old_start);
+		// 将值拷贝进去
         copy(__first, __last, __pos - difference_type(__n));
       }
       else {
         const value_type* __mid = 
           __first + (difference_type(__n) - __elemsbefore);
+		// 将原来Pos前面的元素移动到未初始化内存上面去，然后把输入参数中__n - __elemsbefore也拷贝到未初始化内存上面去
         __uninitialized_copy_copy(_M_start, __pos, __first, __mid,
                                   __new_start);
         _M_start = __new_start;
+		// 拷贝剩余的元素
         copy(__mid, __last, __old_start);
       }
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
   else {
+	// 在后面预留出了__n个元素
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     iterator __old_finish = _M_finish;
     const difference_type __elemsafter = 
       difference_type(__length) - __elemsbefore;
     __pos = _M_finish - __elemsafter;
     __STL_TRY {
+		// 如果插入位置到第后一个元素的数目大于__n
       if (__elemsafter > difference_type(__n)) {
         iterator __finish_n = _M_finish - difference_type(__n);
+		// 原来的最后面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(__finish_n, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// __elems_before - __n的那部分调用copy_backward拷贝
         copy_backward(__pos, __finish_n, __old_finish);
+		// 将值拷贝进去
         copy(__first, __last, __pos);
       }
       else {
         const value_type* __mid = __first + __elemsafter;
+		// 将把输入参数[__first, __last)中最后的__n - __elemsbefore个元素拷贝到未初始化内存上面去，然后将原来Pos后面的元素移动到未初始化内存上面去，
         __uninitialized_copy_copy(__mid, __last, __pos, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// 拷贝剩下的元素
         copy(__first, __mid, __pos);
       }
     }
@@ -1535,45 +1695,60 @@ void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
 {
   const difference_type __elemsbefore = __pos - _M_start;
   size_type __length = size();
+    // 插入位置在前半部分
   if (__elemsbefore < __length / 2) {
+	// 在前面预留出了__n个元素
     iterator __new_start = _M_reserve_elements_at_front(__n);
     iterator __old_start = _M_start;
     __pos = _M_start + __elemsbefore;
     __STL_TRY {
+		// 如果插入位置到第一个元素的数目大于等于__n
       if (__elemsbefore >= __n) {
         iterator __start_n = _M_start + __n;
+		// 原来的最前面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(_M_start, __start_n, __new_start);
         _M_start = __new_start;
+		// __elems_before - __n的那部分调用copy拷贝
         copy(__start_n, __pos, __old_start);
+		// 将值拷贝进去
         copy(__first, __last, __pos - difference_type(__n));
       }
       else {
         const_iterator __mid = __first + (__n - __elemsbefore);
+		// 将原来Pos前面的元素移动到未初始化内存上面去，然后把输入参数中__n - __elemsbefore也拷贝到未初始化内存上面去
         __uninitialized_copy_copy(_M_start, __pos, __first, __mid,
                                   __new_start);
         _M_start = __new_start;
+		// 拷贝剩余的元素
         copy(__mid, __last, __old_start);
       }
     }
     __STL_UNWIND(_M_destroy_nodes(__new_start._M_node, _M_start._M_node));
   }
   else {
+	  // 在后面预留出了__n个元素
     iterator __new_finish = _M_reserve_elements_at_back(__n);
     iterator __old_finish = _M_finish;
     const difference_type __elemsafter = __length - __elemsbefore;
     __pos = _M_finish - __elemsafter;
     __STL_TRY {
+		// 如果插入位置到第后一个元素的数目大于__n
       if (__elemsafter > __n) {
         iterator __finish_n = _M_finish - difference_type(__n);
+		// 原来的最后面的__n个元素移动到未初始化的内存上面去，使用uninitialized_copy（没有初始化的拷贝）
         uninitialized_copy(__finish_n, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// __elems_before - __n的那部分调用copy_backward拷贝
         copy_backward(__pos, __finish_n, __old_finish);
+		// 将值拷贝进去
         copy(__first, __last, __pos);
       }
       else {
         const_iterator __mid = __first + __elemsafter;
+		// 将把输入参数[__first, __last)中最后的__n - __elemsbefore个元素拷贝到未初始化内存上面去，然后将原来Pos后面的元素移动到未初始化内存上面去，
         __uninitialized_copy_copy(__mid, __last, __pos, _M_finish, _M_finish);
         _M_finish = __new_finish;
+		// 拷贝剩下的元素
         copy(__first, __mid, __pos);
       }
     }
@@ -1587,11 +1762,14 @@ void deque<_Tp,_Alloc>::_M_insert_aux(iterator __pos,
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_new_elements_at_front(size_type __new_elems)
 {
+	// 计算增加的内存节点
   size_type __new_nodes
       = (__new_elems + _S_buffer_size() - 1) / _S_buffer_size();
+  // 在前面预留map空间
   _M_reserve_map_at_front(__new_nodes);
   size_type __i;
   __STL_TRY {
+	// 分配内存节点
     for (__i = 1; __i <= __new_nodes; ++__i)
       *(_M_start._M_node - __i) = _M_allocate_node();
   }
@@ -1607,11 +1785,14 @@ void deque<_Tp,_Alloc>::_M_new_elements_at_front(size_type __new_elems)
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_new_elements_at_back(size_type __new_elems)
 {
+	// 计算增加的内存节点
   size_type __new_nodes
       = (__new_elems + _S_buffer_size() - 1) / _S_buffer_size();
+  // 在后面预留map空间
   _M_reserve_map_at_back(__new_nodes);
   size_type __i;
   __STL_TRY {
+	// 分配内存节点
     for (__i = 1; __i <= __new_nodes; ++__i)
       *(_M_finish._M_node + __i) = _M_allocate_node();
   }
@@ -1624,33 +1805,43 @@ void deque<_Tp,_Alloc>::_M_new_elements_at_back(size_type __new_elems)
 #       endif /* __STL_USE_EXCEPTIONS */
 }
 
+// 重新分配map,__add_at_front:增加的节点是否在前面
 template <class _Tp, class _Alloc>
 void deque<_Tp,_Alloc>::_M_reallocate_map(size_type __nodes_to_add,
                                           bool __add_at_front)
 {
+	// 计算老的节点数
   size_type __old_num_nodes = _M_finish._M_node - _M_start._M_node + 1;
+  // 计算新的节点数
   size_type __new_num_nodes = __old_num_nodes + __nodes_to_add;
 
   _Map_pointer __new_nstart;
+  // 还有空间，那就把用到的调整到中间位置
   if (_M_map_size > 2 * __new_num_nodes) {
     __new_nstart = _M_map + (_M_map_size - __new_num_nodes) / 2 
                      + (__add_at_front ? __nodes_to_add : 0);
+	// 往前拷贝
     if (__new_nstart < _M_start._M_node)
       copy(_M_start._M_node, _M_finish._M_node + 1, __new_nstart);
+	// 往后拷贝
     else
       copy_backward(_M_start._M_node, _M_finish._M_node + 1, 
                     __new_nstart + __old_num_nodes);
   }
   else {
+	// 扩展map的策略
     size_type __new_map_size = 
       _M_map_size + max(_M_map_size, __nodes_to_add) + 2;
-
+	// 分配新的map
     _Map_pointer __new_map = _M_allocate_map(__new_map_size);
+	// 开始位置调整到中间
     __new_nstart = __new_map + (__new_map_size - __new_num_nodes) / 2
                          + (__add_at_front ? __nodes_to_add : 0);
+	// 拷贝到新的内容里面
     copy(_M_start._M_node, _M_finish._M_node + 1, __new_nstart);
+	// 释放内存
     _M_deallocate_map(_M_map, _M_map_size);
-
+	// 设置新的map和map size
     _M_map = __new_map;
     _M_map_size = __new_map_size;
   }
