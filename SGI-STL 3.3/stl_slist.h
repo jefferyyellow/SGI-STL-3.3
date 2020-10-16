@@ -27,12 +27,13 @@ __STL_BEGIN_NAMESPACE
 #pragma set woff 1174
 #pragma set woff 1375
 #endif
-
+// 单链表基类，只有一个指向下一个节点的指针
 struct _Slist_node_base
 {
   _Slist_node_base* _M_next;
 };
 
+// 将__new_node节点插入在__prev_node后面
 inline _Slist_node_base*
 __slist_make_link(_Slist_node_base* __prev_node,
                   _Slist_node_base* __new_node)
@@ -42,6 +43,7 @@ __slist_make_link(_Slist_node_base* __prev_node,
   return __new_node;
 }
 
+// 取得__node的前一个节点
 inline _Slist_node_base* 
 __slist_previous(_Slist_node_base* __head,
                  const _Slist_node_base* __node)
@@ -51,6 +53,7 @@ __slist_previous(_Slist_node_base* __head,
   return __head;
 }
 
+// 取得__node的前一个节点
 inline const _Slist_node_base* 
 __slist_previous(const _Slist_node_base* __head,
                  const _Slist_node_base* __node)
@@ -67,8 +70,11 @@ inline void __slist_splice_after(_Slist_node_base* __pos,
   if (__pos != __before_first && __pos != __before_last) {
     _Slist_node_base* __first = __before_first->_M_next;
     _Slist_node_base* __after = __pos->_M_next;
+	// __before_first后面的节点到__before_last都从原列表中删除
     __before_first->_M_next = __before_last->_M_next;
+	// 将__before_first后面的节点挂接到pos后面，
     __pos->_M_next = __first;
+	// __before_last的也挂接进来，形成链表
     __before_last->_M_next = __after;
   }
 }
@@ -76,29 +82,38 @@ inline void __slist_splice_after(_Slist_node_base* __pos,
 inline void
 __slist_splice_after(_Slist_node_base* __pos, _Slist_node_base* __head)
 {
+	// 得到最后一个节点
   _Slist_node_base* __before_last = __slist_previous(__head, 0);
   if (__before_last != __head) {
+	  // pos的下一个
     _Slist_node_base* __after = __pos->_M_next;
+	// 将head的下一个挂在pos后面
     __pos->_M_next = __head->_M_next;
+	// __head后面没有节点了
     __head->_M_next = 0;
+	// 最后一个节点链接pos的下一个，形成链表
     __before_last->_M_next = __after;
   }
 }
-
+// 反转链表
 inline _Slist_node_base* __slist_reverse(_Slist_node_base* __node)
 {
+	// 前一个节点
   _Slist_node_base* __result = __node;
   __node = __node->_M_next;
   __result->_M_next = 0;
   while(__node) {
     _Slist_node_base* __next = __node->_M_next;
+	// 当前节点的下一个节点变成了前一个节点
     __node->_M_next = __result;
+	// 现在的节点变成前一个节点
     __result = __node;
+	// 下一个节点变成当前节点
     __node = __next;
   }
   return __result;
 }
-
+// 单链表的大小
 inline size_t __slist_size(_Slist_node_base* __node)
 {
   size_t __result = 0;
@@ -106,13 +121,14 @@ inline size_t __slist_size(_Slist_node_base* __node)
     ++__result;
   return __result;
 }
-
+// 单链表节点，加上数据
 template <class _Tp>
 struct _Slist_node : public _Slist_node_base
 {
   _Tp _M_data;
 };
 
+// 单链表迭代器基类
 struct _Slist_iterator_base
 {
   typedef size_t               size_type;
@@ -122,6 +138,7 @@ struct _Slist_iterator_base
   _Slist_node_base* _M_node;
 
   _Slist_iterator_base(_Slist_node_base* __x) : _M_node(__x) {}
+  // 增加，就是指向下一个节点
   void _M_incr() { _M_node = _M_node->_M_next; }
 
   bool operator==(const _Slist_iterator_base& __x) const {
@@ -147,7 +164,7 @@ struct _Slist_iterator : public _Slist_iterator_base
   _Slist_iterator(_Node* __x) : _Slist_iterator_base(__x) {}
   _Slist_iterator() : _Slist_iterator_base(0) {}
   _Slist_iterator(const iterator& __x) : _Slist_iterator_base(__x._M_node) {}
-
+  // 取数值
   reference operator*() const { return ((_Node*) _M_node)->_M_data; }
 #ifndef __SGI_STL_NO_ARROW_OPERATOR
   pointer operator->() const { return &(operator*()); }
@@ -193,6 +210,7 @@ inline _Tp* value_type(const _Slist_iterator<_Tp, _Ref, _Ptr>&) {
 #ifdef __STL_USE_STD_ALLOCATORS
 
 // Base for general standard-conforming allocators.
+// 符合标准分配器的基类
 template <class _Tp, class _Allocator, bool _IsStatic>
 class _Slist_alloc_base {
 public:
@@ -203,8 +221,10 @@ public:
   _Slist_alloc_base(const allocator_type& __a) : _M_node_allocator(__a) {}
 
 protected:
+	// 分配节点
   _Slist_node<_Tp>* _M_get_node() 
     { return _M_node_allocator.allocate(1); }
+  // 释放节点
   void _M_put_node(_Slist_node<_Tp>* __p) 
     { _M_node_allocator.deallocate(__p, 1); }
 
@@ -215,6 +235,7 @@ protected:
 };
 
 // Specialization for instanceless allocators.
+// 无实例分配器的特化版本
 template <class _Tp, class _Allocator>
 class _Slist_alloc_base<_Tp,_Allocator, true> {
 public:
@@ -227,10 +248,13 @@ public:
 protected:
   typedef typename _Alloc_traits<_Slist_node<_Tp>, _Allocator>::_Alloc_type
           _Alloc_type;
+  // 分配节点
   _Slist_node<_Tp>* _M_get_node() { return _Alloc_type::allocate(1); }
+  // 释放节点
   void _M_put_node(_Slist_node<_Tp>* __p) { _Alloc_type::deallocate(__p, 1); }
 
 protected:
+	// 首节点
   _Slist_node_base _M_head;
 };
 
@@ -250,13 +274,18 @@ struct _Slist_base
   ~_Slist_base() { _M_erase_after(&this->_M_head, 0); }
 
 protected:
-
+	// 删除后面的节点
   _Slist_node_base* _M_erase_after(_Slist_node_base* __pos)
   {
+	  // 得到后面的节点
     _Slist_node<_Tp>* __next = (_Slist_node<_Tp>*) (__pos->_M_next);
+	// 得到后面的后面节点
     _Slist_node_base* __next_next = __next->_M_next;
+	// 从链表中删除
     __pos->_M_next = __next_next;
+	// 析构
     destroy(&__next->_M_data);
+	// 释放内存
     _M_put_node(__next);
     return __next_next;
   }
@@ -280,10 +309,15 @@ protected:
 
   _Slist_node_base* _M_erase_after(_Slist_node_base* __pos)
   {
+	  // 得到后面的节点
     _Slist_node<_Tp>* __next = (_Slist_node<_Tp>*) (__pos->_M_next);
+	// 得到后面的后面节点
     _Slist_node_base* __next_next = __next->_M_next;
+	// 从链表中删除
     __pos->_M_next = __next_next;
+	// 析构
     destroy(&__next->_M_data);
+	// 释放内存
     _M_put_node(__next);
     return __next_next;
   }
@@ -299,13 +333,18 @@ template <class _Tp, class _Alloc>
 _Slist_node_base*
 _Slist_base<_Tp,_Alloc>::_M_erase_after(_Slist_node_base* __before_first,
                                         _Slist_node_base* __last_node) {
+	// 取首节点
   _Slist_node<_Tp>* __cur = (_Slist_node<_Tp>*) (__before_first->_M_next);
   while (__cur != __last_node) {
     _Slist_node<_Tp>* __tmp = __cur;
+	// 得到下一个
     __cur = (_Slist_node<_Tp>*) __cur->_M_next;
+	// 析构
     destroy(&__tmp->_M_data);
+	// 释放内存
     _M_put_node(__tmp);
   }
+  // 删除中间节点的连接
   __before_first->_M_next = __last_node;
   return __last_node;
 }
@@ -339,20 +378,28 @@ private:
   typedef _Slist_node_base      _Node_base;
   typedef _Slist_iterator_base  _Iterator_base;
 
+  // 创建一个节点，返回指针
   _Node* _M_create_node(const value_type& __x) {
+	  // 分配节点内存
     _Node* __node = this->_M_get_node();
     __STL_TRY {
+		// 构造
       construct(&__node->_M_data, __x);
+	  // 初始化下一个节点的地址
       __node->_M_next = 0;
     }
     __STL_UNWIND(this->_M_put_node(__node));
     return __node;
   }
   
+  // 创建一个节点，返回指针
   _Node* _M_create_node() {
+	  // 分配节点内存
     _Node* __node = this->_M_get_node();
     __STL_TRY {
+		// 构造
       construct(&__node->_M_data);
+	  // 初始化下一个节点的地址
       __node->_M_next = 0;
     }
     __STL_UNWIND(this->_M_put_node(__node));
@@ -424,11 +471,11 @@ public:
 #endif /* __STL_MEMBER_TEMPLATES */
 
 public:
-
+	// 主要是_M_head的下一个节点
   iterator begin() { return iterator((_Node*)this->_M_head._M_next); }
   const_iterator begin() const 
     { return const_iterator((_Node*)this->_M_head._M_next);}
-
+  // 直接给个空指针的迭代器表示end
   iterator end() { return iterator(0); }
   const_iterator end() const { return const_iterator(0); }
 
@@ -446,7 +493,7 @@ public:
   size_type size() const { return __slist_size(this->_M_head._M_next); }
   
   size_type max_size() const { return size_type(-1); }
-
+  // 是否有节点
   bool empty() const { return this->_M_head._M_next == 0; }
 
   void swap(slist& __x)
@@ -457,36 +504,45 @@ public:
   reference front() { return ((_Node*) this->_M_head._M_next)->_M_data; }
   const_reference front() const 
     { return ((_Node*) this->_M_head._M_next)->_M_data; }
+  // 在头部插入
   void push_front(const value_type& __x)   {
     __slist_make_link(&this->_M_head, _M_create_node(__x));
   }
+  // 在头部插入
   void push_front() { __slist_make_link(&this->_M_head, _M_create_node()); }
+  // 弹出头部元素
   void pop_front() {
     _Node* __node = (_Node*) this->_M_head._M_next;
+	// 将首节点从链表中删除
     this->_M_head._M_next = __node->_M_next;
+	// 析构
     destroy(&__node->_M_data);
+	// 释放内存
     this->_M_put_node(__node);
   }
-
+  // 得到__pos位置的前一个节点
   iterator previous(const_iterator __pos) {
     return iterator((_Node*) __slist_previous(&this->_M_head, __pos._M_node));
   }
+   // 得到__pos位置的前一个节点
   const_iterator previous(const_iterator __pos) const {
     return const_iterator((_Node*) __slist_previous(&this->_M_head,
                                                     __pos._M_node));
   }
 
 private:
+	// 在__pos位置后面插入一个节点
   _Node* _M_insert_after(_Node_base* __pos, const value_type& __x) {
     return (_Node*) (__slist_make_link(__pos, _M_create_node(__x)));
   }
-
+  // 在__pos位置后面插入一个节点
   _Node* _M_insert_after(_Node_base* __pos) {
     return (_Node*) (__slist_make_link(__pos, _M_create_node()));
   }
 
   void _M_insert_after_fill(_Node_base* __pos,
                             size_type __n, const value_type& __x) {
+	  // 循环创建节点，并挂接在后面
     for (size_type __i = 0; __i < __n; ++__i)
       __pos = __slist_make_link(__pos, _M_create_node(__x));
   }
@@ -511,6 +567,7 @@ private:
   void _M_insert_after_range(_Node_base* __pos,
                              _InIter __first, _InIter __last,
                              __false_type) {
+	// 循环创建节点并挂接在后面
     while (__first != __last) {
       __pos = __slist_make_link(__pos, _M_create_node(*__first));
       ++__first;
@@ -521,6 +578,7 @@ private:
 
   void _M_insert_after_range(_Node_base* __pos,
                              const_iterator __first, const_iterator __last) {
+	// 循环创建节点并挂接在后面
     while (__first != __last) {
       __pos = __slist_make_link(__pos, _M_create_node(*__first));
       ++__first;
@@ -529,6 +587,7 @@ private:
   void _M_insert_after_range(_Node_base* __pos,
                              const value_type* __first,
                              const value_type* __last) {
+	// 循环创建节点并挂接在后面
     while (__first != __last) {
       __pos = __slist_make_link(__pos, _M_create_node(*__first));
       ++__first;
@@ -635,11 +694,14 @@ public:
 
   void resize(size_type new_size, const _Tp& __x);
   void resize(size_type new_size) { resize(new_size, _Tp()); }
+  // 清空
   void clear() { this->_M_erase_after(&this->_M_head, 0); }
 
 public:
   // Moves the range [__before_first + 1, __before_last + 1) to *this,
   //  inserting it immediately after __pos.  This is constant time.
+ // 移动[__before_first + 1, __before_last + 1)这个区域的元素到this中，
+ // 将它们插入到__pos后面，消耗常数时间
   void splice_after(iterator __pos, 
                     iterator __before_first, iterator __before_last)
   {
@@ -650,6 +712,7 @@ public:
 
   // Moves the element that follows __prev to *this, inserting it immediately
   //  after __pos.  This is constant time.
+  // 移动__prev后面的那个元素到当前链表中，插入在__pos的后面，消耗常数时间
   void splice_after(iterator __pos, iterator __prev)
   {
     __slist_splice_after(__pos._M_node,
@@ -660,12 +723,14 @@ public:
   // Removes all of the elements from the list __x to *this, inserting
   // them immediately after __pos.  __x must not be *this.  Complexity:
   // linear in __x.size().
+  // 将__x中所有的原始移动当前链表中，复杂度：和__x的大小成线性正比
   void splice_after(iterator __pos, slist& __x)
   {
     __slist_splice_after(__pos._M_node, &__x._M_head);
   }
 
   // Linear in distance(begin(), __pos), and linear in __x.size().
+  // 将__x的所有节点都移除并插入到__pos前面
   void splice(iterator __pos, slist& __x) {
     if (__x._M_head._M_next)
       __slist_splice_after(__slist_previous(&this->_M_head, __pos._M_node),
@@ -722,14 +787,17 @@ slist<_Tp,_Alloc>& slist<_Tp,_Alloc>::operator=(const slist<_Tp,_Alloc>& __x)
     _Node_base* __p1 = &this->_M_head;
     _Node* __n1 = (_Node*) this->_M_head._M_next;
     const _Node* __n2 = (const _Node*) __x._M_head._M_next;
+	// 遍历赋值
     while (__n1 && __n2) {
       __n1->_M_data = __n2->_M_data;
       __p1 = __n1;
       __n1 = (_Node*) __n1->_M_next;
       __n2 = (const _Node*) __n2->_M_next;
     }
+	// 赋值的链表大小比较小，将后面的删除
     if (__n2 == 0)
       this->_M_erase_after(__p1, 0);
+	// // 赋值的链表大小比较大，将剩下的元素插入在后面
     else
       _M_insert_after_range(__p1, const_iterator((_Node*)__n2), 
                                   const_iterator(0));
@@ -741,14 +809,17 @@ template <class _Tp, class _Alloc>
 void slist<_Tp, _Alloc>::_M_fill_assign(size_type __n, const _Tp& __val) {
   _Node_base* __prev = &this->_M_head;
   _Node* __node = (_Node*) this->_M_head._M_next;
+  // 遍历赋值
   for ( ; __node != 0 && __n > 0 ; --__n) {
     __node->_M_data = __val;
     __prev = __node;
     __node = (_Node*) __node->_M_next;
   }
+  // 没有赋值完成，插入没完成的部分
   if (__n > 0)
     _M_insert_after_fill(__prev, __n, __val);
   else
+	  // 删除多余的部分
     this->_M_erase_after(__prev, 0);
 }
 
@@ -761,14 +832,17 @@ slist<_Tp, _Alloc>::_M_assign_dispatch(_InputIter __first, _InputIter __last,
 {
   _Node_base* __prev = &this->_M_head;
   _Node* __node = (_Node*) this->_M_head._M_next;
+  // 遍历赋值
   while (__node != 0 && __first != __last) {
     __node->_M_data = *__first;
     __prev = __node;
     __node = (_Node*) __node->_M_next;
     ++__first;
   }
+  // 如果还有赋值完成，将多余的插入在链表尾部
   if (__first != __last)
     _M_insert_after_range(__prev, __first, __last);
+  // 删除多余的
   else
     this->_M_erase_after(__prev, 0);
 }
@@ -834,7 +908,7 @@ inline void swap(slist<_Tp,_Alloc>& __x, slist<_Tp,_Alloc>& __y) {
 
 #endif /* __STL_FUNCTION_TMPL_PARTIAL_ORDER */
 
-
+// 重新设置大小，如果不足，用__x补充
 template <class _Tp, class _Alloc>
 void slist<_Tp,_Alloc>::resize(size_type __len, const _Tp& __x)
 {
@@ -843,8 +917,10 @@ void slist<_Tp,_Alloc>::resize(size_type __len, const _Tp& __x)
     --__len;
     __cur = __cur->_M_next;
   }
+  // 多余的删除
   if (__cur->_M_next) 
     this->_M_erase_after(__cur, 0);
+  // 不足的在尾部插入，补充数量
   else
     _M_insert_after_fill(__cur, __len, __x);
 }
@@ -853,6 +929,7 @@ template <class _Tp, class _Alloc>
 void slist<_Tp,_Alloc>::remove(const _Tp& __val)
 {
   _Node_base* __cur = &this->_M_head;
+  // 删除所有等于__val的节点
   while (__cur && __cur->_M_next) {
     if (((_Node*) __cur->_M_next)->_M_data == __val)
       this->_M_erase_after(__cur);
@@ -861,6 +938,7 @@ void slist<_Tp,_Alloc>::remove(const _Tp& __val)
   }
 }
 
+// 多个相邻的节点如果是同一值，只保留一个
 template <class _Tp, class _Alloc> 
 void slist<_Tp,_Alloc>::unique()
 {
@@ -880,23 +958,36 @@ template <class _Tp, class _Alloc>
 void slist<_Tp,_Alloc>::merge(slist<_Tp,_Alloc>& __x)
 {
   _Node_base* __n1 = &this->_M_head;
+  // 找到合适的位置
   while (__n1->_M_next && __x._M_head._M_next) {
     if (((_Node*) __x._M_head._M_next)->_M_data < 
         ((_Node*)       __n1->_M_next)->_M_data) 
+		// 插入在n1的后面
       __slist_splice_after(__n1, &__x._M_head, __x._M_head._M_next);
+	// 检查下一个节点
     __n1 = __n1->_M_next;
   }
+  // 剩下最后一个
   if (__x._M_head._M_next) {
     __n1->_M_next = __x._M_head._M_next;
     __x._M_head._M_next = 0;
   }
 }
+// 具体过程如下的方式
+// 第一次 1.|	(1)		0			0			0		0		0
+// 第二次 1.|	(1 2)	0			0			0		0		0
+		  2.|	0		(1 2)		0			0		0		0
+// 第三次 1.|	(3)		(1 2)		0			0		0		0
+		  2.|	(3 4)	(1 2)		0			0		0		0
+		  3.|	0		(1 2 3 4)	0			0		0		0
+		  4.|	0		0			(1 2 3 4)	0		0		0
 
 template <class _Tp, class _Alloc>
 void slist<_Tp,_Alloc>::sort()
 {
   if (this->_M_head._M_next && this->_M_head._M_next->_M_next) {
     slist __carry;
+	// 为啥64够了？因为2的64次方，够大了！！！
     slist __counter[64];
     int __fill = 0;
     while (!empty()) {
@@ -912,7 +1003,7 @@ void slist<_Tp,_Alloc>::sort()
       if (__i == __fill)
         ++__fill;
     }
-
+	// 最后将所有没有链接的都合并了
     for (int __i = 1; __i < __fill; ++__i)
       __counter[__i].merge(__counter[__i-1]);
     this->swap(__counter[__fill-1]);
@@ -933,7 +1024,7 @@ void slist<_Tp,_Alloc>::remove_if(_Predicate __pred)
       __cur = __cur->_M_next;
   }
 }
-
+// 多个相邻的节点如果是同一值，只保留一个
 template <class _Tp, class _Alloc> template <class _BinaryPredicate> 
 void slist<_Tp,_Alloc>::unique(_BinaryPredicate __pred)
 {
@@ -948,29 +1039,40 @@ void slist<_Tp,_Alloc>::unique(_BinaryPredicate __pred)
     }
   }
 }
-
+// 合并
 template <class _Tp, class _Alloc> template <class _StrictWeakOrdering>
 void slist<_Tp,_Alloc>::merge(slist<_Tp,_Alloc>& __x,
                               _StrictWeakOrdering __comp)
 {
   _Node_base* __n1 = &this->_M_head;
+  // 比大小，然后是否将对应的节点插入
   while (__n1->_M_next && __x._M_head._M_next) {
     if (__comp(((_Node*) __x._M_head._M_next)->_M_data,
                ((_Node*)       __n1->_M_next)->_M_data))
       __slist_splice_after(__n1, &__x._M_head, __x._M_head._M_next);
     __n1 = __n1->_M_next;
   }
+  // 处理最后一个节点
   if (__x._M_head._M_next) {
     __n1->_M_next = __x._M_head._M_next;
     __x._M_head._M_next = 0;
   }
 }
 
+// 具体过程如下的方式
+// 第一次 1.|	(1)		0			0			0		0		0
+// 第二次 1.|	(1 2)	0			0			0		0		0
+2. | 0		(1 2)		0			0		0		0
+// 第三次 1.|	(3)		(1 2)		0			0		0		0
+2. | (3 4)	(1 2)		0			0		0		0
+3. | 0		(1 2 3 4)	0			0		0		0
+4. | 0		0			(1 2 3 4)	0		0		0
 template <class _Tp, class _Alloc> template <class _StrictWeakOrdering> 
 void slist<_Tp,_Alloc>::sort(_StrictWeakOrdering __comp)
 {
   if (this->_M_head._M_next && this->_M_head._M_next->_M_next) {
     slist __carry;
+	// 为啥64够了？因为2的64次方，够大了！！！
     slist __counter[64];
     int __fill = 0;
     while (!empty()) {
@@ -986,7 +1088,7 @@ void slist<_Tp,_Alloc>::sort(_StrictWeakOrdering __comp)
       if (__i == __fill)
         ++__fill;
     }
-
+	// 最后将所有没有链接的都合并了
     for (int __i = 1; __i < __fill; ++__i)
       __counter[__i].merge(__counter[__i-1], __comp);
     this->swap(__counter[__fill-1]);
@@ -997,7 +1099,7 @@ void slist<_Tp,_Alloc>::sort(_StrictWeakOrdering __comp)
 
 // Specialization of insert_iterator so that insertions will be constant
 // time rather than linear time.
-
+// 专门的插入寄存器，插入将是常数时间，而不是线性时间
 #ifdef __STL_CLASS_PARTIAL_SPECIALIZATION
 
 template <class _Tp, class _Alloc>
@@ -1013,7 +1115,7 @@ public:
   typedef void                difference_type;
   typedef void                pointer;
   typedef void                reference;
-
+  // 单链表的插入有个特点就是要找到位置的前一个节点，才能把节点插入进去
   insert_iterator(_Container& __x, typename _Container::iterator __i) 
     : container(&__x) {
     if (__i == __x.begin())

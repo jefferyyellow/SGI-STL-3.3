@@ -88,9 +88,12 @@ public:
 
   bool empty() const { return c.empty(); }
   size_type size() const { return c.size(); }
+  // 取堆栈顶部元素
   reference top() { return c.back(); }
   const_reference top() const { return c.back(); }
+  // 压入元素
   void push(const value_type& __x) { c.push_back(__x); }
+  // 弹出元素
   void pop() { c.pop_back(); }
 };
 

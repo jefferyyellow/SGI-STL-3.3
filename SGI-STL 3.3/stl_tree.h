@@ -65,32 +65,36 @@ __STL_BEGIN_NAMESPACE
 #endif
 
 typedef bool _Rb_tree_Color_type;
-const _Rb_tree_Color_type _S_rb_tree_red = false;
-const _Rb_tree_Color_type _S_rb_tree_black = true;
+const _Rb_tree_Color_type _S_rb_tree_red = false;			// 红色为false
+const _Rb_tree_Color_type _S_rb_tree_black = true;			// 黑色为true
 
 struct _Rb_tree_node_base
 {
   typedef _Rb_tree_Color_type _Color_type;
   typedef _Rb_tree_node_base* _Base_ptr;
 
-  _Color_type _M_color; 
-  _Base_ptr _M_parent;
-  _Base_ptr _M_left;
-  _Base_ptr _M_right;
+  _Color_type _M_color;			// 颜色
+  _Base_ptr _M_parent;			// 父节点
+  _Base_ptr _M_left;			// 左子节点
+  _Base_ptr _M_right;			// 右子节点
 
+  // 找到最小的值
   static _Base_ptr _S_minimum(_Base_ptr __x)
   {
+	  // 一直往左走
     while (__x->_M_left != 0) __x = __x->_M_left;
     return __x;
   }
 
+  // 找到最大的值
   static _Base_ptr _S_maximum(_Base_ptr __x)
   {
+	  // 一直往右走
     while (__x->_M_right != 0) __x = __x->_M_right;
     return __x;
   }
 };
-
+// 红黑树节点
 template <class _Value>
 struct _Rb_tree_node : public _Rb_tree_node_base
 {
@@ -108,17 +112,23 @@ struct _Rb_tree_base_iterator
 
   void _M_increment()
   {
+	  // 中序遍历的方式，找到右子树的最左节点
     if (_M_node->_M_right != 0) {
+		// 右子树
       _M_node = _M_node->_M_right;
+	  // 最左节点
       while (_M_node->_M_left != 0)
         _M_node = _M_node->_M_left;
     }
     else {
+		// 找到父节点
       _Base_ptr __y = _M_node->_M_parent;
+	  // 如果节点上父节点的右子节点，一直回溯，一直到节点不是右子节点为止
       while (_M_node == __y->_M_right) {
         _M_node = __y;
         __y = __y->_M_parent;
       }
+	  // 如果此时的右子节点不等于父节点，那就是找到整个树里面最小的大于原来节点的节点
       if (_M_node->_M_right != __y)
         _M_node = __y;
     }
@@ -126,9 +136,11 @@ struct _Rb_tree_base_iterator
 
   void _M_decrement()
   {
+	  // 如果是红节点，且节点的父亲的父亲等于自己
     if (_M_node->_M_color == _S_rb_tree_red &&
         _M_node->_M_parent->_M_parent == _M_node)
       _M_node = _M_node->_M_right;
+	// 如果有左子树，找到左子树的最有节点
     else if (_M_node->_M_left != 0) {
       _Base_ptr __y = _M_node->_M_left;
       while (__y->_M_right != 0)
@@ -136,11 +148,13 @@ struct _Rb_tree_base_iterator
       _M_node = __y;
     }
     else {
+		// 如果父节点一直是左节点，那就一直回溯，一直到节点不是左子节点为止
       _Base_ptr __y = _M_node->_M_parent;
       while (_M_node == __y->_M_left) {
         _M_node = __y;
         __y = __y->_M_parent;
       }
+	  // 得到那个不是左子节点
       _M_node = __y;
     }
   }

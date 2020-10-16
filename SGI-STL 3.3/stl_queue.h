@@ -87,13 +87,19 @@ public:
   queue() : c() {}
   explicit queue(const _Sequence& __c) : c(__c) {}
 
+  // 是否为空
   bool empty() const { return c.empty(); }
+  // 大小
   size_type size() const { return c.size(); }
+  // 返回最前面的元素
   reference front() { return c.front(); }
   const_reference front() const { return c.front(); }
+  // 返回最后面的元素
   reference back() { return c.back(); }
   const_reference back() const { return c.back(); }
+  // 压入队列，压入队尾
   void push(const value_type& __x) { c.push_back(__x); }
+  // 弹出队列，弹出队头
   void pop() { c.pop_front(); }
 };
 
@@ -212,20 +218,27 @@ public:
     make_heap(c.begin(), c.end(), comp);
   }
 #endif /* __STL_MEMBER_TEMPLATES */
-
+  
   bool empty() const { return c.empty(); }
   size_type size() const { return c.size(); }
+  // 取最前面的
   const_reference top() const { return c.front(); }
+  // 压入优先队列
   void push(const value_type& __x) {
     __STL_TRY {
+		// 先压入，在构建
       c.push_back(__x); 
+	  // 处理尾端新加入的，使整个堆是最大堆
       push_heap(c.begin(), c.end(), comp);
     }
     __STL_UNWIND(c.clear());
   }
+  // 弹出优先队列
   void pop() {
     __STL_TRY {
+		// 先将要弹出的放在向量尾端，构建其他的成为最大堆
       pop_heap(c.begin(), c.end(), comp);
+	  // 弹出尾部的元素
       c.pop_back();
     }
     __STL_UNWIND(c.clear());

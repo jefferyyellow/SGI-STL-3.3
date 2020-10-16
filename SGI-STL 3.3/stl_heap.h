@@ -43,12 +43,17 @@ void
 __push_heap(_RandomAccessIterator __first,
             _Distance __holeIndex, _Distance __topIndex, _Tp __value)
 {
+  // 压入元素的父节点索引
   _Distance __parent = (__holeIndex - 1) / 2;
+  // 如果没有到达根节点，并且压入的值大于父节点
   while (__holeIndex > __topIndex && *(__first + __parent) < __value) {
+	  // 将父节点移动到子节点
     *(__first + __holeIndex) = *(__first + __parent);
+	// 继续进行新一轮的比较和移动
     __holeIndex = __parent;
     __parent = (__holeIndex - 1) / 2;
-  }    
+  }
+  // 新的值找到对应的位置
   *(__first + __holeIndex) = __value;
 }
 
@@ -78,12 +83,17 @@ void
 __push_heap(_RandomAccessIterator __first, _Distance __holeIndex,
             _Distance __topIndex, _Tp __value, _Compare __comp)
 {
+	// 压入元素的父节点索引
   _Distance __parent = (__holeIndex - 1) / 2;
+  // 如果没有到达根节点，并且压入的值大于父节点
   while (__holeIndex > __topIndex && __comp(*(__first + __parent), __value)) {
+	  // 将父节点移动到子节点
     *(__first + __holeIndex) = *(__first + __parent);
+	// 继续进行新一轮的比较和移动
     __holeIndex = __parent;
     __parent = (__holeIndex - 1) / 2;
   }
+  // 新的值找到对应的位置
   *(__first + __holeIndex) = __value;
 }
 
@@ -115,17 +125,24 @@ __adjust_heap(_RandomAccessIterator __first, _Distance __holeIndex,
 {
   _Distance __topIndex = __holeIndex;
   _Distance __secondChild = 2 * __holeIndex + 2;
+  // 右边的子节点索引小于长度
   while (__secondChild < __len) {
+	  // 如果左边的子节点比较大，得到左边子节点的索引，或者直接用右边子节点的索引
     if (*(__first + __secondChild) < *(__first + (__secondChild - 1)))
       __secondChild--;
+	// 将比较大的赋值给空洞
     *(__first + __holeIndex) = *(__first + __secondChild);
+	// 循环处理到叶子节点
     __holeIndex = __secondChild;
     __secondChild = 2 * (__secondChild + 1);
   }
+  // 如果计算出的右边索引和长度一样，说明没有右边的子节点
   if (__secondChild == __len) {
+	  // 使用左子节点
     *(__first + __holeIndex) = *(__first + (__secondChild - 1));
     __holeIndex = __secondChild - 1;
   }
+  // 很可能换了一个节点，换了节点后，该节点可能比他的父节点大，所以需要使用__push_heap找到合适的位置
   __push_heap(__first, __holeIndex, __topIndex, __value);
 }
 
@@ -156,7 +173,7 @@ inline void pop_heap(_RandomAccessIterator __first,
                  _LessThanComparable);
   __pop_heap_aux(__first, __last, __VALUE_TYPE(__first));
 }
-
+// __holeIndex位置找到合适的子节点来填充
 template <class _RandomAccessIterator, class _Distance,
           class _Tp, class _Compare>
 void
@@ -165,17 +182,24 @@ __adjust_heap(_RandomAccessIterator __first, _Distance __holeIndex,
 {
   _Distance __topIndex = __holeIndex;
   _Distance __secondChild = 2 * __holeIndex + 2;
+  // 右边的子节点索引小于长度
   while (__secondChild < __len) {
+	  // 如果左边的子节点比较大，得到左边子节点的索引，或者直接用右边子节点的索引
     if (__comp(*(__first + __secondChild), *(__first + (__secondChild - 1))))
       __secondChild--;
+	// 将比较大的赋值给空洞
     *(__first + __holeIndex) = *(__first + __secondChild);
+	// 循环处理到叶子节点
     __holeIndex = __secondChild;
     __secondChild = 2 * (__secondChild + 1);
   }
+  // 如果计算出的右边索引和长度一样，说明没有右边的子节点
   if (__secondChild == __len) {
+	  // 使用左子节点
     *(__first + __holeIndex) = *(__first + (__secondChild - 1));
     __holeIndex = __secondChild - 1;
   }
+  // 很可能换了一个节点，换了节点后，该节点可能比他的父节点大，所以需要使用__push_heap找到合适的位置
   __push_heap(__first, __holeIndex, __topIndex, __value, __comp);
 }
 
@@ -186,7 +210,10 @@ __pop_heap(_RandomAccessIterator __first, _RandomAccessIterator __last,
            _RandomAccessIterator __result, _Tp __value, _Compare __comp,
            _Distance*)
 {
+	// __value为最后一个的值
+	// 将第一个调整到最后一个
   *__result = *__first;
+  // 洞的索引是第一个
   __adjust_heap(__first, _Distance(0), _Distance(__last - __first), 
                 __value, __comp);
 }
@@ -244,9 +271,10 @@ __make_heap(_RandomAccessIterator __first, _RandomAccessIterator __last,
 {
   if (__last - __first < 2) return;
   _Distance __len = __last - __first;
+  // 找到第一个需要重排的子树头部
   _Distance __parent = (__len - 2)/2;
-    
   while (true) {
+	  // 调整子树成为最大树
     __adjust_heap(__first, __parent, __len, _Tp(*(__first + __parent)),
                   __comp);
     if (__parent == 0) return;
@@ -263,7 +291,7 @@ make_heap(_RandomAccessIterator __first,
   __make_heap(__first, __last, __comp,
               __VALUE_TYPE(__first), __DISTANCE_TYPE(__first));
 }
-
+// pop操作会把最大的值放在尾端，如果一直操作，整个向量就会变成一个从小到大的向量，但是注意：该向量就不是一个合法的最大堆了
 template <class _RandomAccessIterator>
 void sort_heap(_RandomAccessIterator __first, _RandomAccessIterator __last)
 {
@@ -274,6 +302,7 @@ void sort_heap(_RandomAccessIterator __first, _RandomAccessIterator __last)
     pop_heap(__first, __last--);
 }
 
+// pop操作会把最大的值放在尾端，如果一直操作，整个向量就会变成一个从小到大的向量，但是注意：该向量就不是一个合法的最大堆了
 template <class _RandomAccessIterator, class _Compare>
 void 
 sort_heap(_RandomAccessIterator __first,
