@@ -154,7 +154,7 @@ struct _Rb_tree_base_iterator
         _M_node = __y;
         __y = __y->_M_parent;
       }
-	  // 得到那个不是左子节点
+	  // 得到那个不是左子节点的父节点
       _M_node = __y;
     }
   }
@@ -182,14 +182,14 @@ struct _Rb_tree_iterator : public _Rb_tree_base_iterator
 #ifndef __SGI_STL_NO_ARROW_OPERATOR
   pointer operator->() const { return &(operator*()); }
 #endif /* __SGI_STL_NO_ARROW_OPERATOR */
-
+  // 直接调用父类的_M_increment函数
   _Self& operator++() { _M_increment(); return *this; }
   _Self operator++(int) {
     _Self __tmp = *this;
     _M_increment();
     return __tmp;
   }
-    
+    // 直接调用父类的_M_decrement函数
   _Self& operator--() { _M_decrement(); return *this; }
   _Self operator--(int) {
     _Self __tmp = *this;
@@ -227,89 +227,146 @@ inline _Value* value_type(const _Rb_tree_iterator<_Value, _Ref, _Ptr>&) {
 
 #endif /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+// 左旋，x是旋转子树的根节点，root是整棵树的根节点
+// 左旋就是将右子节点提升为旋转子树根节点，然后把右子节点的左子节点挂在当前节点的右子节点上
 inline void 
 _Rb_tree_rotate_left(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
 {
+	// 右子节点，最终会提升为旋转子树根节点的节点
   _Rb_tree_node_base* __y = __x->_M_right;
+  // 把右子节点的左子节点挂在当前节点的右子节点上
   __x->_M_right = __y->_M_left;
+  // 原来的节点的父节点是_y，现在改成_x
   if (__y->_M_left !=0)
     __y->_M_left->_M_parent = __x;
+  // _y的父节点以前是__x，现在改成__x的父节点
   __y->_M_parent = __x->_M_parent;
 
+  // 如果__x以前是根节点，还需要修改根节点
   if (__x == __root)
     __root = __y;
+  // 如果__x是__x父节点的左子节点，那得把父节点得左子节点改成y
   else if (__x == __x->_M_parent->_M_left)
     __x->_M_parent->_M_left = __y;
+   // 如果__x是__x父节点的右子节点，那得把父节点得右子节点改成y
   else
     __x->_M_parent->_M_right = __y;
+  // ___x变成了__y的左子节点
   __y->_M_left = __x;
+  // __x的父节点变成了提升为根节点的__y
   __x->_M_parent = __y;
 }
 
+// 右旋，x是旋转子树的根节点，root是整棵树的根节点
+// 右旋就是将左子节点提升为旋转子树根节点，然后把左子节点的右子节点挂在当前节点的左子节点上
 inline void 
 _Rb_tree_rotate_right(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
 {
+	// 左子节点，最终会提升为旋转子树根节点的节点
   _Rb_tree_node_base* __y = __x->_M_left;
+  // 把左子节点的右子节点挂在当前节点的左子节点上
   __x->_M_left = __y->_M_right;
+
+  // 原来的节点的父节点是_y，现在改成_x
   if (__y->_M_right != 0)
     __y->_M_right->_M_parent = __x;
+  // _y的父节点以前是__x，现在改成__x的父节点
   __y->_M_parent = __x->_M_parent;
 
+  // 如果__x以前是根节点，还需要修改根节点
   if (__x == __root)
     __root = __y;
+  // 如果__x是__x父节点的右子节点，那得把父节点得右子节点改成y
   else if (__x == __x->_M_parent->_M_right)
     __x->_M_parent->_M_right = __y;
+  // 如果__x是__x父节点的左子节点，那得把父节点得左子节点改成y
   else
     __x->_M_parent->_M_left = __y;
+  // __x变成了__y的右子节点
   __y->_M_right = __x;
+  // __x的父节点变成了提升为根节点的__y
   __x->_M_parent = __y;
 }
 
+// 红黑树的重新平衡
 inline void 
 _Rb_tree_rebalance(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
 {
+	// x的节点设置为红色
   __x->_M_color = _S_rb_tree_red;
+  // 不是根节点，并且父节点的颜色为红色
   while (__x != __root && __x->_M_parent->_M_color == _S_rb_tree_red) {
+	  // 父节点是左子节点
     if (__x->_M_parent == __x->_M_parent->_M_parent->_M_left) {
+		// 找到叔叔节点
       _Rb_tree_node_base* __y = __x->_M_parent->_M_parent->_M_right;
+	  // 如果叔叔存在并且是红色
       if (__y && __y->_M_color == _S_rb_tree_red) {
+		  // 将父亲的颜色改成黑色
         __x->_M_parent->_M_color = _S_rb_tree_black;
+		// 叔叔的颜色改成黑色
         __y->_M_color = _S_rb_tree_black;
+		// 祖父的颜色改成红色
         __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
+		// 将当前节点的祖父改成当前节点，继续循环
         __x = __x->_M_parent->_M_parent;
       }
+	  // 如果叔叔不存在或者是黑色
       else {
+		  // 当前节点是右节点，（将当前节点的父节点为子树左旋，就会变成左节点和父节点都是红色的情况）
         if (__x == __x->_M_parent->_M_right) {
+			// 将父亲当成当前节点
           __x = __x->_M_parent;
+		  // 以父亲为子树根节点，左旋
           _Rb_tree_rotate_left(__x, __root);
         }
+		// 将父节点改成黑色
         __x->_M_parent->_M_color = _S_rb_tree_black;
+		// 祖父节点改成红色
         __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
+		// 再右旋
         _Rb_tree_rotate_right(__x->_M_parent->_M_parent, __root);
       }
     }
+	 // 父节点是右子节点
     else {
+		// 找到叔叔节点
       _Rb_tree_node_base* __y = __x->_M_parent->_M_parent->_M_left;
+	  // 如果叔叔存在并且是红色
       if (__y && __y->_M_color == _S_rb_tree_red) {
+		// 将父亲的颜色改成黑色
         __x->_M_parent->_M_color = _S_rb_tree_black;
+		// 将叔叔的颜色改成黑色
         __y->_M_color = _S_rb_tree_black;
+		// 将祖父的颜色改成红色
         __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
+		// 将当前节点的祖父改成当前节点，继续循环
         __x = __x->_M_parent->_M_parent;
       }
+	   // 如果叔叔不存在或者是黑色
       else {
+		  // 当前节点是左子节点，（将当前节点的父节点为子树右旋，就会变成右节点和父节点都是红色的情况）
         if (__x == __x->_M_parent->_M_left) {
+			// 当前节点的父节点当前节点
           __x = __x->_M_parent;
+		  // // 以父亲为子树根节点，右旋
           _Rb_tree_rotate_right(__x, __root);
         }
+		// 将父节点改成黑色
         __x->_M_parent->_M_color = _S_rb_tree_black;
+		// 祖父节点改成红色
         __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
+		// 再左旋
         _Rb_tree_rotate_left(__x->_M_parent->_M_parent, __root);
       }
     }
   }
+
+  // 将根节点的颜色置成黑色
   __root->_M_color = _S_rb_tree_black;
 }
 
+// 
 inline _Rb_tree_node_base*
 _Rb_tree_rebalance_for_erase(_Rb_tree_node_base* __z,
                              _Rb_tree_node_base*& __root,
